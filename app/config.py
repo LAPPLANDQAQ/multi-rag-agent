@@ -79,6 +79,10 @@ class Settings(BaseSettings):
 
     # ==================== RAG Chat 会话记忆 ====================
     redis_url: str = Field(default="redis://localhost:6379/0", description="Redis 连接地址")
+    cache_enabled: bool = Field(default=True, description="Enable optional read-through cache")
+    cache_backend: str = Field(default="memory", description="Cache backend: memory or redis")
+    cache_ttl_seconds: int = Field(default=300, description="Default cache TTL in seconds")
+    cache_namespace: str = Field(default="multi_rag_agent", description="Cache key namespace")
     rag_chat_memory_enabled: bool = Field(default=False, description="是否启用 RAG Chat Redis 会话记忆")
     rag_chat_history_turns: int = Field(default=3, description="回答时注入最近 N 轮对话")
     rag_chat_memory_ttl_sec: int = Field(default=604800, description="RAG Chat 会话记忆 TTL 秒数")

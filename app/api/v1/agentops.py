@@ -1,9 +1,11 @@
 """AgentOps CRUD API."""
 
 from collections.abc import Callable
+from typing import TypeVar
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from loguru import logger
+from pydantic import BaseModel, ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.agentops.schemas import (
@@ -23,10 +25,15 @@ from app.agentops.schemas import (
 )
 from app.agentops.service import AgentOpsService, agentops_service
 from app.config import settings
+from app.core.cache import get_cache, make_cache_key
 from app.core import metrics
 from app.schemas.common import ApiResponse
 
 router = APIRouter(prefix="/agentops", tags=["AgentOps"])
+ModelT = TypeVar("ModelT", bound=BaseModel)
+
+AGENTOPS_SUMMARY_CACHE_TTL_SECONDS = 30
+AGENTOPS_SCENARIO_LIST_CACHE_TTL_SECONDS = 60
 
 
 def get_agentops_service() -> AgentOpsService:
@@ -59,6 +66,29 @@ def _not_found(entity: str, entity_id: str) -> HTTPException:
         status_code=status.HTTP_404_NOT_FOUND,
         detail=f"{entity} not found: {entity_id}",
     )
+
+
+def _cached_model(
+    key: str,
+    model_type: type[ModelT],
+    loader: Callable[[], ModelT],
+    ttl_seconds: int,
+) -> ModelT:
+    cache = get_cache()
+    cached = cache.get(key)
+    if cached is not None:
+        try:
+            return model_type.model_validate(cached)
+        except ValidationError:
+            cache.delete(key)
+
+    data = loader()
+    cache.set(key, data.model_dump(mode="json"), ttl_seconds=ttl_seconds)
+    return data
+
+
+def _clear_agentops_cache() -> None:
+    get_cache().clear_namespace(make_cache_key("agentops"))
 
 
 @router.get(
@@ -124,7 +154,13 @@ async def list_scenarios(
     offset: int = Query(default=0, ge=0),
     service: AgentOpsService = Depends(get_agentops_service),
 ) -> ApiResponse[DemoScenarioList]:
-    data = _run_db(lambda: service.list_demo_scenarios(limit=limit, offset=offset))
+    key = make_cache_key("agentops", "scenarios", "v1", limit, offset)
+    data = _cached_model(
+        key,
+        DemoScenarioList,
+        lambda: _run_db(lambda: service.list_demo_scenarios(limit=limit, offset=offset)),
+        AGENTOPS_SCENARIO_LIST_CACHE_TTL_SECONDS,
+    )
     metrics.record_agentops_crud("scenarios", "list", "success")
     return ApiResponse.success(data=data)
 
@@ -140,6 +176,7 @@ async def create_scenario(
     service: AgentOpsService = Depends(get_agentops_service),
 ) -> ApiResponse[DemoScenarioRead]:
     data = _run_db(lambda: service.create_demo_scenario(payload))
+    _clear_agentops_cache()
     metrics.record_agentops_crud("scenarios", "create", "success")
     return ApiResponse.success(data=data)
 
@@ -159,6 +196,7 @@ async def update_scenario(
     if data is None:
         metrics.record_agentops_crud("scenarios", "update", "not_found")
         raise _not_found("demo scenario", scenario_id)
+    _clear_agentops_cache()
     metrics.record_agentops_crud("scenarios", "update", "success")
     return ApiResponse.success(data=data)
 
@@ -177,6 +215,7 @@ async def delete_scenario(
     if not deleted:
         metrics.record_agentops_crud("scenarios", "delete", "not_found")
         raise _not_found("demo scenario", scenario_id)
+    _clear_agentops_cache()
     metrics.record_agentops_crud("scenarios", "delete", "success")
     return ApiResponse.success(data=DeleteResult(id=scenario_id, deleted=True))
 
@@ -281,6 +320,12 @@ async def list_eval_results(
 async def get_summary(
     service: AgentOpsService = Depends(get_agentops_service),
 ) -> ApiResponse[AgentOpsSummary]:
-    data = _run_db(service.get_agentops_summary)
+    key = make_cache_key("agentops", "summary", "v1")
+    data = _cached_model(
+        key,
+        AgentOpsSummary,
+        lambda: _run_db(service.get_agentops_summary),
+        AGENTOPS_SUMMARY_CACHE_TTL_SECONDS,
+    )
     metrics.record_agentops_crud("summary", "get", "success")
     return ApiResponse.success(data=data)

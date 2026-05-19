@@ -6,14 +6,16 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.agentops.db import Base, create_engine, create_session_factory
-from app.agentops.schemas import DiagnosisRunCreate, EvalResultCreate
+from app.agentops.schemas import AgentOpsSummary, DiagnosisRunCreate, EvalResultCreate
 from app.agentops.service import AgentOpsService
 from app.api.v1.agentops import get_agentops_service, router
 from app.config import settings
+from app.core.cache import reset_cache
 
 
 class AgentOpsApiTest(unittest.TestCase):
     def setUp(self) -> None:
+        reset_cache()
         self.tmpdir = tempfile.TemporaryDirectory()
         db_path = Path(self.tmpdir.name) / "agentops-api-test.db"
         self.engine = create_engine(f"sqlite:///{db_path}")
@@ -21,12 +23,13 @@ class AgentOpsApiTest(unittest.TestCase):
         self.SessionLocal = create_session_factory(self.engine)
         self.service = AgentOpsService(self.SessionLocal)
 
-        app = FastAPI()
-        app.include_router(router, prefix="/api/v1")
-        app.dependency_overrides[get_agentops_service] = lambda: self.service
-        self.client = TestClient(app)
+        self.app = FastAPI()
+        self.app.include_router(router, prefix="/api/v1")
+        self.app.dependency_overrides[get_agentops_service] = lambda: self.service
+        self.client = TestClient(self.app)
 
     def tearDown(self) -> None:
+        reset_cache()
         self.engine.dispose()
         self.tmpdir.cleanup()
 
@@ -49,6 +52,45 @@ class AgentOpsApiTest(unittest.TestCase):
             },
             body["data"],
         )
+
+    def test_summary_uses_memory_cache_for_repeated_reads(self) -> None:
+        class CountingSummaryService(AgentOpsService):
+            def __init__(self, session_factory):
+                super().__init__(session_factory)
+                self.summary_calls = 0
+
+            def get_agentops_summary(self):
+                self.summary_calls += 1
+                return AgentOpsSummary(
+                    total_runs=1,
+                    succeeded_runs=1,
+                    failed_runs=0,
+                    success_rate=1.0,
+                    avg_duration_ms=1200.0,
+                    total_tool_calls=2,
+                    eval_results=0,
+                    latest_eval_score=None,
+                )
+
+        original_enabled = settings.cache_enabled
+        original_backend = settings.cache_backend
+        settings.cache_enabled = True
+        settings.cache_backend = "memory"
+        reset_cache()
+        counting_service = CountingSummaryService(self.SessionLocal)
+        self.app.dependency_overrides[get_agentops_service] = lambda: counting_service
+        try:
+            first = self.client.get("/api/v1/agentops/summary")
+            second = self.client.get("/api/v1/agentops/summary")
+        finally:
+            self.app.dependency_overrides[get_agentops_service] = lambda: self.service
+            settings.cache_enabled = original_enabled
+            settings.cache_backend = original_backend
+            reset_cache()
+
+        self.assertEqual(200, first.status_code)
+        self.assertEqual(first.json()["data"], second.json()["data"])
+        self.assertEqual(1, counting_service.summary_calls)
 
     def test_agentops_disabled_returns_503(self) -> None:
         original = settings.agentops_enabled
