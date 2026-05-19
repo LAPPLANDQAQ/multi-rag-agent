@@ -36,6 +36,13 @@ class Settings(BaseSettings):
     host: str = Field(default="0.0.0.0", description="监听地址")
     port: int = Field(default=9900, description="监听端口")
 
+    # ==================== AgentOps business database ====================
+    agentops_enabled: bool = Field(default=True, description="Enable AgentOps business data layer")
+    agentops_db_url: str = Field(
+        default="sqlite:///data/agentops.db",
+        description="AgentOps SQLite database URL",
+    )
+
     # ==================== DashScope LLM ====================
     dashscope_api_key: str = Field(default="", description="DashScope API Key")
     dashscope_base_url: str = Field(

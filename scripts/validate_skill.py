@@ -1,4 +1,4 @@
-"""Validate a single SKILL.md file without starting application services.
+"""Validate SKILL.md files without starting application services.
 
 The validator intentionally stays read-only:
 - parses the supplied SKILL.md through the project loader
@@ -27,6 +27,7 @@ from app.tools.meta import TOOL_META, get_meta  # noqa: E402
 logger.remove()
 
 
+DEFAULT_SKILLS_DIR = PROJECT_ROOT / "app" / "skills" / "definitions"
 REQUIRED_FIELDS = ("name", "display_name", "description", "allowed_tools", "risk_level")
 VALID_RISK_LEVELS = {"low", "medium", "high"}
 
@@ -149,11 +150,45 @@ def validate_skill(path: Path) -> int:
     return 0
 
 
+def iter_default_skill_paths() -> list[Path]:
+    """Return built-in Skill files in deterministic order."""
+
+    return sorted(DEFAULT_SKILLS_DIR.glob("*/SKILL.md"))
+
+
+def validate_skills(paths: Iterable[Path]) -> int:
+    total = 0
+    failures = 0
+    for path in paths:
+        if total:
+            print()
+        total += 1
+        if validate_skill(path.resolve()) != 0:
+            failures += 1
+
+    if total == 0:
+        _emit("ERROR", f"no Skill files found under {_display_path(DEFAULT_SKILLS_DIR)}")
+        return 1
+
+    prefix = "PASS" if failures == 0 else "FAIL"
+    _emit(prefix, f"validated {total} skill file(s), {failures} failure(s)")
+    return 1 if failures else 0
+
+
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Validate a single SKILL.md file.")
-    parser.add_argument("skill_path", type=Path, help="Path to the SKILL.md file to validate.")
+    parser = argparse.ArgumentParser(
+        description="Validate one SKILL.md file, or all built-in Skills when no path is provided."
+    )
+    parser.add_argument(
+        "skill_path",
+        type=Path,
+        nargs="?",
+        help="Optional path to one SKILL.md file. Defaults to app/skills/definitions/*/SKILL.md.",
+    )
     args = parser.parse_args(argv)
-    return validate_skill(args.skill_path.resolve())
+    if args.skill_path:
+        return validate_skill(args.skill_path.resolve())
+    return validate_skills(iter_default_skill_paths())
 
 
 if __name__ == "__main__":
