@@ -187,3 +187,19 @@ class EvalResultSummary(BaseModel):
     report_count: int
     error_count: int
     average_score: float | None
+
+
+class AgentOpsSummary(BaseModel):
+    total_runs: int
+    succeeded_runs: int
+    failed_runs: int
+    success_rate: float
+    avg_duration_ms: float | None
+    total_tool_calls: int
+    eval_results: int
+    latest_eval_score: float | None
+
+
+class DeleteResult(BaseModel):
+    id: str
+    deleted: bool
