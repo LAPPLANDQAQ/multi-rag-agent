@@ -1,0 +1,70 @@
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Logs / runtime
+logs/
+*.log
+*.log.err
+*.out.log
+*.err.log
+
+# Docker / databases / local state
+volumes/
+data/milvus/
+data/redis/
+data/minio/
+data/etcd/
+data/uploads/
+data/private/
+data/local/
+data/tmp/
+*.db
+*.sqlite
+*.sqlite3
+
+# Generated reports / local exports / captured demo streams
+reports/
+exports/
+generated_reports/
+*.diagnosis.md
+*.report.md
+frontend/demo_fixtures/*.json
+!frontend/demo_fixtures/README.md
+!frontend/demo_fixtures/manifest.json
+
+# Node / open-webSearch
+node_modules/
+open-webSearch-main/node_modules/
+open-webSearch-main/build/
+open-webSearch-main/dist/
+open-webSearch-main/*.log
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Test run artifacts
+tests/__*.log
+tests/__*.log.err
+
+# Local REPL / shell history accidentally created in the repo
+.python_history
+.node_repl_history
+.lesshst
+.psql_history
+.rediscli_history
+ConsoleHost_history.txt
