@@ -13,6 +13,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from app.agentops.schemas import DiagnosisRunCreate
 from app.config import settings
+from app.core import metrics
 from app.schemas.aiops import DiagnosisRequest
 import app.services.aiops_service as aiops_service
 
@@ -48,6 +49,7 @@ def _observe_diagnosis_event(state: _DiagnosisRunAggregation, event: dict) -> No
     event_type = str(event.get("type") or "")
     stage = str(event.get("stage") or "")
     data = _event_data(event)
+    metrics.record_aiops_sse_event(event_type or "unknown")
 
     if event_type == "skill_selected":
         skill = data.get("skill") or event.get("skill")
@@ -56,6 +58,7 @@ def _observe_diagnosis_event(state: _DiagnosisRunAggregation, event: dict) -> No
 
     if event_type == "tool_call" or stage == "tool_call":
         state.tool_call_count += 1
+        metrics.record_aiops_tool_call()
 
     if event_type == "report":
         report = data.get("report") or event.get("report")
@@ -103,6 +106,7 @@ def _persist_agentops_run_best_effort(payload: DiagnosisRunCreate) -> None:
 
         agentops_service.create_diagnosis_run(payload)
     except Exception as exc:
+        metrics.record_aiops_error("db_persist_error")
         logger.warning(
             "[agentops] failed to persist diagnosis run summary: "
             f"{type(exc).__name__}: {exc}"
@@ -136,6 +140,7 @@ async def _persisting_sse_event_generator(
         raise
     except Exception as e:
         logger.exception(f"[aiops] stream exception: {e}")
+        metrics.record_aiops_error("stream_error")
         error_event = {
             "type": "error",
             "stage": "stream_failure",
@@ -150,12 +155,14 @@ async def _persisting_sse_event_generator(
     finally:
         if not cancelled:
             payload = _diagnosis_run_payload(state)
+            metrics.record_aiops_run(payload.status, payload.duration_ms)
             try:
                 if persist_func is None:
                     _persist_agentops_run_best_effort(payload)
                 else:
                     persist_func(payload)
             except Exception as exc:
+                metrics.record_aiops_error("db_persist_error")
                 logger.warning(
                     "[agentops] diagnosis run persistence hook failed: "
                     f"{type(exc).__name__}: {exc}"

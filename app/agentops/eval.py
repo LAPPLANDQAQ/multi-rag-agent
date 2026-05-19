@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from app.core import metrics
+
 
 TERMINAL_TYPES = {"complete", "done", "finished", "diagnosis_complete"}
 TERMINAL_STAGES = {"complete", "done", "finished", "diagnosis_complete"}
@@ -169,6 +171,12 @@ def evaluate_fixture_records(
     report.run_time = run_time or utc_now_iso()
     report.mode = mode
     report.fixtures_dir = fixtures_dir
+    metrics.record_eval_run(
+        mode=mode,
+        status="success",
+        score=report.summary.score,
+        cases=len(eval_cases),
+    )
     return report
 
 

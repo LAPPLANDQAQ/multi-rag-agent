@@ -23,6 +23,7 @@ from app.agentops.schemas import (
 )
 from app.agentops.service import AgentOpsService, agentops_service
 from app.config import settings
+from app.core import metrics
 from app.schemas.common import ApiResponse
 
 router = APIRouter(prefix="/agentops", tags=["AgentOps"])
@@ -72,6 +73,7 @@ async def list_runs(
     service: AgentOpsService = Depends(get_agentops_service),
 ) -> ApiResponse[DiagnosisRunList]:
     data = _run_db(lambda: service.list_diagnosis_runs(limit=limit, offset=offset))
+    metrics.record_agentops_crud("runs", "list", "success")
     return ApiResponse.success(data=data)
 
 
@@ -87,7 +89,9 @@ async def get_run(
 ) -> ApiResponse[DiagnosisRunRead]:
     run = _run_db(lambda: service.get_diagnosis_run(run_id))
     if run is None:
+        metrics.record_agentops_crud("runs", "get", "not_found")
         raise _not_found("diagnosis run", run_id)
+    metrics.record_agentops_crud("runs", "get", "success")
     return ApiResponse.success(data=run)
 
 
@@ -103,7 +107,9 @@ async def delete_run(
 ) -> ApiResponse[DeleteResult]:
     deleted = _run_db(lambda: service.delete_diagnosis_run(run_id))
     if not deleted:
+        metrics.record_agentops_crud("runs", "delete", "not_found")
         raise _not_found("diagnosis run", run_id)
+    metrics.record_agentops_crud("runs", "delete", "success")
     return ApiResponse.success(data=DeleteResult(id=run_id, deleted=True))
 
 
@@ -119,6 +125,7 @@ async def list_scenarios(
     service: AgentOpsService = Depends(get_agentops_service),
 ) -> ApiResponse[DemoScenarioList]:
     data = _run_db(lambda: service.list_demo_scenarios(limit=limit, offset=offset))
+    metrics.record_agentops_crud("scenarios", "list", "success")
     return ApiResponse.success(data=data)
 
 
@@ -133,6 +140,7 @@ async def create_scenario(
     service: AgentOpsService = Depends(get_agentops_service),
 ) -> ApiResponse[DemoScenarioRead]:
     data = _run_db(lambda: service.create_demo_scenario(payload))
+    metrics.record_agentops_crud("scenarios", "create", "success")
     return ApiResponse.success(data=data)
 
 
@@ -149,7 +157,9 @@ async def update_scenario(
 ) -> ApiResponse[DemoScenarioRead]:
     data = _run_db(lambda: service.update_demo_scenario(scenario_id, payload))
     if data is None:
+        metrics.record_agentops_crud("scenarios", "update", "not_found")
         raise _not_found("demo scenario", scenario_id)
+    metrics.record_agentops_crud("scenarios", "update", "success")
     return ApiResponse.success(data=data)
 
 
@@ -165,7 +175,9 @@ async def delete_scenario(
 ) -> ApiResponse[DeleteResult]:
     deleted = _run_db(lambda: service.delete_demo_scenario(scenario_id))
     if not deleted:
+        metrics.record_agentops_crud("scenarios", "delete", "not_found")
         raise _not_found("demo scenario", scenario_id)
+    metrics.record_agentops_crud("scenarios", "delete", "success")
     return ApiResponse.success(data=DeleteResult(id=scenario_id, deleted=True))
 
 
@@ -188,6 +200,7 @@ async def list_eval_cases(
             enabled_only=enabled_only,
         )
     )
+    metrics.record_agentops_crud("eval_cases", "list", "success")
     return ApiResponse.success(data=data)
 
 
@@ -202,6 +215,7 @@ async def create_eval_case(
     service: AgentOpsService = Depends(get_agentops_service),
 ) -> ApiResponse[EvalCaseRead]:
     data = _run_db(lambda: service.create_eval_case(payload))
+    metrics.record_agentops_crud("eval_cases", "create", "success")
     return ApiResponse.success(data=data)
 
 
@@ -218,7 +232,9 @@ async def update_eval_case(
 ) -> ApiResponse[EvalCaseRead]:
     data = _run_db(lambda: service.update_eval_case(case_id, payload))
     if data is None:
+        metrics.record_agentops_crud("eval_cases", "update", "not_found")
         raise _not_found("eval case", case_id)
+    metrics.record_agentops_crud("eval_cases", "update", "success")
     return ApiResponse.success(data=data)
 
 
@@ -234,7 +250,9 @@ async def delete_eval_case(
 ) -> ApiResponse[DeleteResult]:
     deleted = _run_db(lambda: service.delete_eval_case(case_id))
     if not deleted:
+        metrics.record_agentops_crud("eval_cases", "delete", "not_found")
         raise _not_found("eval case", case_id)
+    metrics.record_agentops_crud("eval_cases", "delete", "success")
     return ApiResponse.success(data=DeleteResult(id=case_id, deleted=True))
 
 
@@ -250,6 +268,7 @@ async def list_eval_results(
     service: AgentOpsService = Depends(get_agentops_service),
 ) -> ApiResponse[EvalResultList]:
     data = _run_db(lambda: service.list_eval_results(limit=limit, offset=offset))
+    metrics.record_agentops_crud("eval_results", "list", "success")
     return ApiResponse.success(data=data)
 
 
@@ -263,4 +282,5 @@ async def get_summary(
     service: AgentOpsService = Depends(get_agentops_service),
 ) -> ApiResponse[AgentOpsSummary]:
     data = _run_db(service.get_agentops_summary)
+    metrics.record_agentops_crud("summary", "get", "success")
     return ApiResponse.success(data=data)
