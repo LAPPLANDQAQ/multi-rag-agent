@@ -81,6 +81,57 @@ flowchart TD
 5. Replanner 判断继续执行、调整计划、切换 Skill 或收敛输出。
 6. Report 生成结构化 Markdown 诊断报告，并通过 SSE 返回前端。
 
+## AgentOps / EvalOps Console
+
+This repository includes an additive AgentOps layer around the existing AIOps diagnosis flow. It does not replace the LangGraph diagnosis pipeline. It records diagnosis runs, manages demo scenarios and eval cases, stores eval results, and exposes a lightweight web console for run history and offline fixture replay.
+
+### Capabilities
+
+- Diagnosis run history persisted through the existing SSE diagnosis path.
+- Demo scenario management for repeatable interview/demo inputs.
+- Eval case management and offline fixture evaluation.
+- Prometheus-style metrics at `GET /metrics`.
+- Optional memory/Redis cache for low-risk read-only AgentOps data.
+- pytest coverage and GitHub Actions CI checks.
+
+### AgentOps APIs
+
+- `GET /api/v1/agentops/summary`
+- `GET /api/v1/agentops/runs`
+- `GET /api/v1/agentops/runs/{run_id}`
+- `DELETE /api/v1/agentops/runs/{run_id}`
+- `GET/POST/PUT/DELETE /api/v1/agentops/scenarios`
+- `GET/POST/PUT/DELETE /api/v1/agentops/eval-cases`
+- `GET /api/v1/agentops/eval-results`
+
+### Metrics
+
+- `GET /metrics`
+- HTTP request count and duration metrics.
+- AIOps run, SSE event, tool-call, and error counters.
+- AgentOps CRUD and persisted run counters.
+- EvalOps score/case metrics.
+- Cache hit/miss counters for memory or Redis backends.
+
+### Eval And Verification Commands
+
+```powershell
+python scripts\run_agent_eval.py --mode offline
+pytest -q
+python -m compileall -q app mcp_servers scripts
+python scripts\validate_skill.py
+```
+
+The repository also includes `.github/workflows/ci.yml` with conservative Python and Node checks. The CI uses dummy environment values and does not require real API keys, Milvus, Redis, Docker Compose, or external LLM access for unit tests.
+
+### Resume-Safe Wording
+
+- Designed an AgentOps data layer and RESTful APIs with SQLAlchemy to manage diagnosis runs, demo scenarios, eval cases, and eval results.
+- Persisted live SSE diagnosis summaries as side-channel run records without modifying the LangGraph diagnosis topology.
+- Built an AgentOps Web Console for run history, report review, scenario management, eval case management, and real recorded fixture playback.
+- Implemented lightweight offline Agent Eval based on real SSE fixtures, tracking skill match, completion, report generation, tool-call success, errors, and latency.
+- Added pytest tests, Prometheus-style metrics, optional cache layer, and GitHub Actions CI to improve reliability and maintainability.
+
 ## 技术栈
 
 当前依赖基线以 `requirements.txt` 和 `open-webSearch-main/package.json` 为准，核心库保持在已验证的大版本范围内，避免直接跨到破坏性主版本。
@@ -342,6 +393,9 @@ X-KB-Admin-Token: your-admin-token
 | `docs/portfolio/dep_audit.md` | Python 与 Node 依赖审计记录 |
 | `docs/portfolio/sse_contract.md` | AIOps SSE 事件契约 |
 | `docs/portfolio/smoke_check.md` | 演示前只读 smoke check 说明 |
+| `docs/portfolio/agentops_architecture.md` | AgentOps / EvalOps 增量架构与边界 |
+| `docs/portfolio/v5_upgrade_summary.md` | V5 分阶段升级总结、验证和限制 |
+| `docs/portfolio/codex_workflow.md` | Codex 辅助开发流程与人工验证边界 |
 
 ## 项目结构
 
