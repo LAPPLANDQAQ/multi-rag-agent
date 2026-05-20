@@ -15,6 +15,7 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
         const tab = btn.dataset.tab;
         document.getElementById(`tab-${tab}`).classList.remove("hidden");
         if (tab === "documents") loadDocs();
+        if (tab === "agentops") loadAgentOps();
     });
 });
 
@@ -1009,6 +1010,641 @@ function handleAiopsEvent(ev, planEl, stepsEl, reportEl, statusEl) {
         reportEl.innerHTML = `<p class="text-red-500">错误: ${escapeHtml(ev.message)}</p>`;
         statusEl.textContent = "失败 ✗";
     }
+}
+
+// ============================================================
+// AgentOps Console
+// ============================================================
+let agentOpsLoaded = false;
+let agentOpsRunItems = [];
+let agentOpsScenarioItems = [];
+let agentOpsEvalCaseItems = [];
+
+const agentOpsRefreshButton = document.getElementById("agentops-refresh");
+if (agentOpsRefreshButton) {
+    agentOpsRefreshButton.addEventListener("click", () => loadAgentOps(true));
+}
+
+const agentOpsRunsList = document.getElementById("agentops-runs-list");
+if (agentOpsRunsList) agentOpsRunsList.addEventListener("click", handleAgentOpsRunClick);
+
+const agentOpsScenarioForm = document.getElementById("agentops-scenario-form");
+if (agentOpsScenarioForm) {
+    agentOpsScenarioForm.addEventListener("submit", submitAgentOpsScenario);
+}
+const agentOpsScenarioReset = document.getElementById("agentops-scenario-reset");
+if (agentOpsScenarioReset) agentOpsScenarioReset.addEventListener("click", resetAgentOpsScenarioForm);
+
+const agentOpsScenariosList = document.getElementById("agentops-scenarios-list");
+if (agentOpsScenariosList) agentOpsScenariosList.addEventListener("click", handleAgentOpsScenarioClick);
+
+const agentOpsEvalCaseForm = document.getElementById("agentops-eval-case-form");
+if (agentOpsEvalCaseForm) {
+    agentOpsEvalCaseForm.addEventListener("submit", submitAgentOpsEvalCase);
+}
+const agentOpsEvalCaseReset = document.getElementById("agentops-eval-case-reset");
+if (agentOpsEvalCaseReset) agentOpsEvalCaseReset.addEventListener("click", resetAgentOpsEvalCaseForm);
+
+const agentOpsEvalCasesList = document.getElementById("agentops-eval-cases-list");
+if (agentOpsEvalCasesList) agentOpsEvalCasesList.addEventListener("click", handleAgentOpsEvalCaseClick);
+
+const agentOpsFixturesList = document.getElementById("agentops-fixtures-list");
+if (agentOpsFixturesList) agentOpsFixturesList.addEventListener("click", handleAgentOpsFixtureClick);
+
+async function loadAgentOps() {
+    const tab = document.getElementById("tab-agentops");
+    if (!tab) return;
+
+    clearAgentOpsWarning();
+    setAgentOpsLoadingState();
+    await Promise.all([
+        loadAgentOpsSummary(),
+        loadAgentOpsRuns(),
+        loadAgentOpsScenarios(),
+        loadAgentOpsEvalCases(),
+        loadAgentOpsEvalResults(),
+    ]);
+    await loadOfflineFixtureStatus();
+    renderAgentOpsFixtures();
+    agentOpsLoaded = true;
+}
+
+function setAgentOpsLoadingState() {
+    setAgentOpsHtml("agentops-summary-grid", agentOpsEmptyHtml("Loading summary..."));
+    setAgentOpsHtml("agentops-runs-list", agentOpsEmptyHtml("Loading run history..."));
+    setAgentOpsHtml("agentops-scenarios-list", agentOpsEmptyHtml("Loading scenarios..."));
+    setAgentOpsHtml("agentops-eval-cases-list", agentOpsEmptyHtml("Loading eval cases..."));
+    setAgentOpsHtml("agentops-eval-results-list", agentOpsEmptyHtml("Loading eval results..."));
+    setAgentOpsHtml("agentops-fixtures-list", agentOpsEmptyHtml("Loading offline fixture index..."));
+}
+
+async function agentOpsRequest(path, options = {}) {
+    const fetchOptions = { ...options };
+    const headers = { ...(options.headers || {}) };
+    if (fetchOptions.body && typeof fetchOptions.body !== "string") {
+        headers["Content-Type"] = "application/json";
+        fetchOptions.body = JSON.stringify(fetchOptions.body);
+    }
+    fetchOptions.headers = headers;
+
+    const resp = await fetch(`${API}${path}`, fetchOptions);
+    const payload = await resp.json().catch(() => null);
+    if (!resp.ok) {
+        const detail = payload?.detail || payload?.message || `HTTP ${resp.status}`;
+        throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
+    }
+    if (payload?.code && payload.code !== "SUCCESS") {
+        throw new Error(payload.message || payload.code);
+    }
+    return payload?.data ?? payload;
+}
+
+async function loadAgentOpsSummary() {
+    try {
+        const summary = await agentOpsRequest("/agentops/summary");
+        renderAgentOpsSummary(summary || {});
+    } catch (e) {
+        showAgentOpsWarning(`Summary API unavailable: ${e.message}`);
+        setAgentOpsHtml("agentops-summary-grid", agentOpsEmptyHtml(`Summary unavailable: ${e.message}`));
+    }
+}
+
+function renderAgentOpsSummary(summary) {
+    const metrics = [
+        ["Total Runs", summary.total_runs ?? 0],
+        ["Success Rate", formatAgentOpsPercent(summary.success_rate)],
+        ["Avg Duration", formatAgentOpsDuration(summary.avg_duration_ms)],
+        ["Tool Calls", summary.total_tool_calls ?? 0],
+        ["Eval Results", summary.eval_results ?? 0],
+        ["Latest Score", formatAgentOpsScore(summary.latest_eval_score)],
+    ];
+    const html = metrics.map(([label, value]) => `
+        <div class="agentops-metric">
+            <div class="agentops-metric-label">${escapeHtml(label)}</div>
+            <div class="agentops-metric-value">${escapeHtml(String(value))}</div>
+        </div>
+    `).join("");
+    setAgentOpsHtml("agentops-summary-grid", html);
+}
+
+async function loadAgentOpsRuns() {
+    try {
+        const data = await agentOpsRequest("/agentops/runs?limit=20&offset=0");
+        agentOpsRunItems = Array.isArray(data?.items) ? data.items : [];
+        renderAgentOpsRuns(agentOpsRunItems);
+    } catch (e) {
+        agentOpsRunItems = [];
+        showAgentOpsWarning(`Run history API unavailable: ${e.message}`);
+        setAgentOpsHtml("agentops-runs-list", agentOpsEmptyHtml(`Run history unavailable: ${e.message}`));
+    }
+}
+
+function renderAgentOpsRuns(items) {
+    const report = document.getElementById("agentops-run-report");
+    if (report) report.classList.add("hidden");
+    if (!items.length) {
+        setAgentOpsHtml("agentops-runs-list", agentOpsEmptyHtml("No diagnosis runs persisted yet."));
+        return;
+    }
+    const rows = items.map((run) => `
+        <tr>
+            <td>${agentOpsStatusPill(run.status)}</td>
+            <td class="font-mono text-xs">${escapeHtml(run.selected_skill || "-")}</td>
+            <td>${escapeHtml(run.title || run.input_text || run.id)}</td>
+            <td>${escapeHtml(formatAgentOpsDuration(run.duration_ms))}</td>
+            <td>${escapeHtml(String(run.event_count ?? 0))}</td>
+            <td>${escapeHtml(String(run.tool_call_count ?? 0))}</td>
+            <td>${escapeHtml(formatAgentOpsDate(run.created_at))}</td>
+            <td class="agentops-row-actions">
+                ${run.report_markdown ? `<button type="button" class="agentops-link-btn" data-agentops-run-action="report" data-run-id="${escapeHtml(run.id)}">View report</button>` : ""}
+                <button type="button" class="agentops-danger-btn" data-agentops-run-action="delete" data-run-id="${escapeHtml(run.id)}">Delete</button>
+            </td>
+        </tr>
+    `).join("");
+    setAgentOpsHtml("agentops-runs-list", `
+        <table class="agentops-table">
+            <thead>
+                <tr>
+                    <th>status</th>
+                    <th>selected_skill</th>
+                    <th>title</th>
+                    <th>duration_ms</th>
+                    <th>events</th>
+                    <th>tools</th>
+                    <th>created_at</th>
+                    <th>actions</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>
+    `);
+}
+
+async function handleAgentOpsRunClick(e) {
+    const btn = e.target.closest("[data-agentops-run-action]");
+    if (!btn) return;
+    const runId = btn.dataset.runId;
+    const run = agentOpsRunItems.find((item) => item.id === runId);
+    if (!run) return;
+
+    if (btn.dataset.agentopsRunAction === "report") {
+        const report = document.getElementById("agentops-run-report");
+        if (!report) return;
+        report.innerHTML = `
+            <div class="mb-3 text-xs text-slate-500">
+                Persisted report for <span class="font-mono">${escapeHtml(run.id)}</span>
+            </div>
+            ${renderMarkdown(run.report_markdown || "")}
+        `;
+        report.classList.remove("hidden");
+        report.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    if (btn.dataset.agentopsRunAction === "delete") {
+        if (!confirm(`Delete diagnosis run ${run.id}?`)) return;
+        try {
+            await agentOpsRequest(`/agentops/runs/${encodeURIComponent(run.id)}`, { method: "DELETE" });
+            await Promise.all([loadAgentOpsSummary(), loadAgentOpsRuns()]);
+        } catch (err) {
+            showAgentOpsWarning(`Run delete failed: ${err.message}`);
+        }
+    }
+}
+
+async function loadAgentOpsScenarios() {
+    try {
+        const data = await agentOpsRequest("/agentops/scenarios");
+        agentOpsScenarioItems = Array.isArray(data?.items) ? data.items : [];
+        renderAgentOpsScenarios(agentOpsScenarioItems);
+    } catch (e) {
+        agentOpsScenarioItems = [];
+        showAgentOpsWarning(`Demo scenarios API unavailable: ${e.message}`);
+        setAgentOpsHtml("agentops-scenarios-list", agentOpsEmptyHtml(`Scenarios unavailable: ${e.message}`));
+    }
+}
+
+function renderAgentOpsScenarios(items) {
+    if (!items.length) {
+        setAgentOpsHtml("agentops-scenarios-list", agentOpsEmptyHtml("No demo scenarios yet."));
+        return;
+    }
+    const html = items.map((item) => `
+        <div class="agentops-item">
+            <div class="min-w-0">
+                <div class="agentops-item-title">${escapeHtml(item.title || item.id)}</div>
+                <div class="agentops-item-subtitle">
+                    <span class="font-mono">${escapeHtml(item.id)}</span>
+                    ${item.expected_skill ? ` · hint: <span class="font-mono">${escapeHtml(item.expected_skill)}</span>` : ""}
+                </div>
+                <div class="agentops-tags">${agentOpsTagsHtml(item.tags)}</div>
+                <p class="agentops-preview">${escapeHtml(item.input_text || "")}</p>
+            </div>
+            <div class="agentops-item-actions">
+                <button type="button" class="agentops-link-btn" data-agentops-scenario-action="fill" data-scenario-id="${escapeHtml(item.id)}">Fill input</button>
+                <button type="button" class="agentops-secondary-btn" data-agentops-scenario-action="edit" data-scenario-id="${escapeHtml(item.id)}">Edit</button>
+                <button type="button" class="agentops-danger-btn" data-agentops-scenario-action="delete" data-scenario-id="${escapeHtml(item.id)}">Delete</button>
+            </div>
+        </div>
+    `).join("");
+    setAgentOpsHtml("agentops-scenarios-list", html);
+}
+
+async function submitAgentOpsScenario(e) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const payload = agentOpsScenarioPayload(form);
+    const editingId = form.dataset.editingId || "";
+    try {
+        if (editingId) {
+            delete payload.id;
+            await agentOpsRequest(`/agentops/scenarios/${encodeURIComponent(editingId)}`, {
+                method: "PUT",
+                body: payload,
+            });
+        } else {
+            await agentOpsRequest("/agentops/scenarios", {
+                method: "POST",
+                body: payload,
+            });
+        }
+        resetAgentOpsScenarioForm();
+        await loadAgentOpsScenarios();
+    } catch (err) {
+        showAgentOpsWarning(`Scenario save failed: ${err.message}`);
+    }
+}
+
+function agentOpsScenarioPayload(form) {
+    return {
+        id: form.elements.id.value.trim(),
+        title: form.elements.title.value.trim(),
+        description: form.elements.description.value.trim() || null,
+        input_text: form.elements.input_text.value.trim(),
+        expected_skill: form.elements.expected_skill.value.trim() || null,
+        tags: normalizeAgentOpsCsv(form.elements.tags.value),
+        is_builtin: form.elements.is_builtin.checked,
+    };
+}
+
+async function handleAgentOpsScenarioClick(e) {
+    const btn = e.target.closest("[data-agentops-scenario-action]");
+    if (!btn) return;
+    const id = btn.dataset.scenarioId;
+    const item = agentOpsScenarioItems.find((scenario) => scenario.id === id);
+    if (!item) return;
+
+    if (btn.dataset.agentopsScenarioAction === "fill") {
+        fillAgentOpsScenarioInput(id);
+    } else if (btn.dataset.agentopsScenarioAction === "edit") {
+        fillAgentOpsScenarioForm(item);
+    } else if (btn.dataset.agentopsScenarioAction === "delete") {
+        if (!confirm(`Delete scenario ${id}?`)) return;
+        try {
+            await agentOpsRequest(`/agentops/scenarios/${encodeURIComponent(id)}`, { method: "DELETE" });
+            resetAgentOpsScenarioForm();
+            await loadAgentOpsScenarios();
+        } catch (err) {
+            showAgentOpsWarning(`Scenario delete failed: ${err.message}`);
+        }
+    }
+}
+
+function fillAgentOpsScenarioInput(scenarioId) {
+    const scenario = agentOpsScenarioItems.find((item) => item.id === scenarioId);
+    const input = document.getElementById("aiops-query");
+    if (!scenario || !input) return;
+    input.value = scenario.input_text || "";
+    selectedDemoScenarioId = scenario.id || "manual";
+    switchAgentOpsTab("aiops");
+    window.setTimeout(() => input.focus(), 0);
+}
+
+function fillAgentOpsScenarioForm(item) {
+    const form = document.getElementById("agentops-scenario-form");
+    if (!form) return;
+    form.dataset.editingId = item.id;
+    form.elements.id.value = item.id || "";
+    form.elements.id.readOnly = true;
+    form.elements.title.value = item.title || "";
+    form.elements.description.value = item.description || "";
+    form.elements.input_text.value = item.input_text || "";
+    form.elements.expected_skill.value = item.expected_skill || "";
+    form.elements.tags.value = item.tags || "";
+    form.elements.is_builtin.checked = !!item.is_builtin;
+}
+
+function resetAgentOpsScenarioForm() {
+    const form = document.getElementById("agentops-scenario-form");
+    if (!form) return;
+    form.reset();
+    form.dataset.editingId = "";
+    form.elements.id.readOnly = false;
+}
+
+async function loadAgentOpsEvalCases() {
+    try {
+        const data = await agentOpsRequest("/agentops/eval-cases");
+        agentOpsEvalCaseItems = Array.isArray(data?.items) ? data.items : [];
+        renderAgentOpsEvalCases(agentOpsEvalCaseItems);
+    } catch (e) {
+        agentOpsEvalCaseItems = [];
+        showAgentOpsWarning(`Eval cases API unavailable: ${e.message}`);
+        setAgentOpsHtml("agentops-eval-cases-list", agentOpsEmptyHtml(`Eval cases unavailable: ${e.message}`));
+    }
+}
+
+function renderAgentOpsEvalCases(items) {
+    if (!items.length) {
+        setAgentOpsHtml("agentops-eval-cases-list", agentOpsEmptyHtml("No eval cases yet."));
+        return;
+    }
+    const html = items.map((item) => `
+        <div class="agentops-item">
+            <div class="min-w-0">
+                <div class="agentops-item-title">${escapeHtml(item.name || item.id)}</div>
+                <div class="agentops-item-subtitle">
+                    <span class="font-mono">${escapeHtml(item.id)}</span>
+                    ${item.expected_skill ? ` · expected: <span class="font-mono">${escapeHtml(item.expected_skill)}</span>` : ""}
+                    · ${item.enabled ? "enabled" : "disabled"}
+                </div>
+                <div class="agentops-tags">${agentOpsTagsHtml(item.tags)}</div>
+                <p class="agentops-preview">${escapeHtml(item.input_text || "")}</p>
+            </div>
+            <div class="agentops-item-actions">
+                <button type="button" class="agentops-secondary-btn" data-agentops-eval-action="toggle" data-case-id="${escapeHtml(item.id)}">${item.enabled ? "Disable" : "Enable"}</button>
+                <button type="button" class="agentops-secondary-btn" data-agentops-eval-action="edit" data-case-id="${escapeHtml(item.id)}">Edit</button>
+                <button type="button" class="agentops-danger-btn" data-agentops-eval-action="delete" data-case-id="${escapeHtml(item.id)}">Delete</button>
+            </div>
+        </div>
+    `).join("");
+    setAgentOpsHtml("agentops-eval-cases-list", html);
+}
+
+async function submitAgentOpsEvalCase(e) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const payload = agentOpsEvalCasePayload(form);
+    const editingId = form.dataset.editingId || "";
+    try {
+        if (editingId) {
+            delete payload.id;
+            await agentOpsRequest(`/agentops/eval-cases/${encodeURIComponent(editingId)}`, {
+                method: "PUT",
+                body: payload,
+            });
+        } else {
+            await agentOpsRequest("/agentops/eval-cases", {
+                method: "POST",
+                body: payload,
+            });
+        }
+        resetAgentOpsEvalCaseForm();
+        await loadAgentOpsEvalCases();
+    } catch (err) {
+        showAgentOpsWarning(`Eval case save failed: ${err.message}`);
+    }
+}
+
+function agentOpsEvalCasePayload(form) {
+    return {
+        id: form.elements.id.value.trim(),
+        name: form.elements.name.value.trim(),
+        input_text: form.elements.input_text.value.trim(),
+        expected_skill: form.elements.expected_skill.value.trim() || null,
+        expected_tools: normalizeAgentOpsCsv(form.elements.expected_tools.value),
+        tags: normalizeAgentOpsCsv(form.elements.tags.value),
+        enabled: form.elements.enabled.checked,
+    };
+}
+
+async function handleAgentOpsEvalCaseClick(e) {
+    const btn = e.target.closest("[data-agentops-eval-action]");
+    if (!btn) return;
+    const id = btn.dataset.caseId;
+    const item = agentOpsEvalCaseItems.find((evalCase) => evalCase.id === id);
+    if (!item) return;
+
+    if (btn.dataset.agentopsEvalAction === "toggle") {
+        try {
+            await agentOpsRequest(`/agentops/eval-cases/${encodeURIComponent(id)}`, {
+                method: "PUT",
+                body: { enabled: !item.enabled },
+            });
+            await loadAgentOpsEvalCases();
+        } catch (err) {
+            showAgentOpsWarning(`Eval case toggle failed: ${err.message}`);
+        }
+    } else if (btn.dataset.agentopsEvalAction === "edit") {
+        fillAgentOpsEvalCaseForm(item);
+    } else if (btn.dataset.agentopsEvalAction === "delete") {
+        if (!confirm(`Delete eval case ${id}?`)) return;
+        try {
+            await agentOpsRequest(`/agentops/eval-cases/${encodeURIComponent(id)}`, { method: "DELETE" });
+            resetAgentOpsEvalCaseForm();
+            await loadAgentOpsEvalCases();
+        } catch (err) {
+            showAgentOpsWarning(`Eval case delete failed: ${err.message}`);
+        }
+    }
+}
+
+function fillAgentOpsEvalCaseForm(item) {
+    const form = document.getElementById("agentops-eval-case-form");
+    if (!form) return;
+    form.dataset.editingId = item.id;
+    form.elements.id.value = item.id || "";
+    form.elements.id.readOnly = true;
+    form.elements.name.value = item.name || "";
+    form.elements.input_text.value = item.input_text || "";
+    form.elements.expected_skill.value = item.expected_skill || "";
+    form.elements.expected_tools.value = item.expected_tools || "";
+    form.elements.tags.value = item.tags || "";
+    form.elements.enabled.checked = !!item.enabled;
+}
+
+function resetAgentOpsEvalCaseForm() {
+    const form = document.getElementById("agentops-eval-case-form");
+    if (!form) return;
+    form.reset();
+    form.dataset.editingId = "";
+    form.elements.id.readOnly = false;
+    form.elements.enabled.checked = true;
+}
+
+async function loadAgentOpsEvalResults() {
+    try {
+        const data = await agentOpsRequest("/agentops/eval-results?limit=20");
+        renderAgentOpsEvalResults(Array.isArray(data?.items) ? data.items : []);
+    } catch (e) {
+        showAgentOpsWarning(`Eval results API unavailable: ${e.message}`);
+        setAgentOpsHtml("agentops-eval-results-list", agentOpsEmptyHtml(`Eval results unavailable: ${e.message}`));
+    }
+}
+
+function renderAgentOpsEvalResults(items) {
+    if (!items.length) {
+        setAgentOpsHtml("agentops-eval-results-list", agentOpsEmptyHtml("No eval results yet."));
+        return;
+    }
+    const rows = items.map((item) => `
+        <tr>
+            <td>${escapeHtml(item.mode || "-")}</td>
+            <td>${formatAgentOpsBool(item.skill_match)}</td>
+            <td>${formatAgentOpsBool(item.has_report)}</td>
+            <td>${formatAgentOpsBool(item.has_error)}</td>
+            <td>${escapeHtml(formatAgentOpsScore(item.score))}</td>
+            <td>${escapeHtml(formatAgentOpsDuration(item.duration_ms))}</td>
+            <td>${escapeHtml(formatAgentOpsDate(item.created_at))}</td>
+        </tr>
+    `).join("");
+    setAgentOpsHtml("agentops-eval-results-list", `
+        <table class="agentops-table">
+            <thead>
+                <tr>
+                    <th>mode</th>
+                    <th>skill_match</th>
+                    <th>has_report</th>
+                    <th>has_error</th>
+                    <th>score</th>
+                    <th>duration_ms</th>
+                    <th>created_at</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>
+    `);
+}
+
+function renderAgentOpsFixtures() {
+    const list = document.getElementById("agentops-fixtures-list");
+    if (!list) return;
+    const sources = Array.isArray(offlineFixtureSources) ? offlineFixtureSources : [];
+    if (!sources.length) {
+        list.innerHTML = `
+            <div class="agentops-offline-label">Offline recorded demo - not a live model/tool call</div>
+            ${agentOpsEmptyHtml("No manifest fixtures or latest local recording found.")}
+        `;
+        return;
+    }
+    const rows = sources.map((source) => {
+        const recordedAt = source.metadata?.recorded_at || "unknown";
+        const eventCount = source.eventCount || source.metadata?.event_count || "unknown";
+        const kind = source.kind === "localStorage" ? "localStorage latest recording" : "manifest fixture";
+        return `
+            <div class="agentops-fixture-row">
+                <div class="min-w-0">
+                    <div class="font-semibold text-slate-800">${escapeHtml(source.title || source.id)}</div>
+                    <div class="text-xs text-amber-800">
+                        ${escapeHtml(kind)} · ${escapeHtml(String(eventCount))} events · recorded at ${escapeHtml(recordedAt)}
+                    </div>
+                </div>
+                <button type="button" class="agentops-secondary-btn" data-agentops-fixture-id="${escapeHtml(source.id)}">Select replay</button>
+            </div>
+        `;
+    }).join("");
+    list.innerHTML = `
+        <div class="agentops-offline-label">Offline recorded demo - not a live model/tool call</div>
+        ${rows}
+    `;
+}
+
+function handleAgentOpsFixtureClick(e) {
+    const btn = e.target.closest("[data-agentops-fixture-id]");
+    if (!btn) return;
+    const select = document.getElementById("offline-fixture-select");
+    if (select) {
+        select.value = btn.dataset.agentopsFixtureId;
+        updateOfflineFixtureStatus();
+    }
+    switchAgentOpsTab("aiops");
+}
+
+function setAgentOpsHtml(id, html) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+}
+
+function agentOpsEmptyHtml(message) {
+    return `<div class="agentops-empty">${escapeHtml(message)}</div>`;
+}
+
+function showAgentOpsWarning(message) {
+    const el = document.getElementById("agentops-warning");
+    if (!el) return;
+    const existing = el.textContent.trim();
+    el.textContent = existing ? `${existing} | ${message}` : message;
+    el.classList.remove("hidden");
+}
+
+function clearAgentOpsWarning() {
+    const el = document.getElementById("agentops-warning");
+    if (!el) return;
+    el.textContent = "";
+    el.classList.add("hidden");
+}
+
+function switchAgentOpsTab(tabName) {
+    const btn = document.querySelector(`.tab-btn[data-tab="${CSS.escape(tabName)}"]`);
+    if (btn) btn.click();
+}
+
+function normalizeAgentOpsCsv(value) {
+    const items = String(value || "")
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+    return items.length ? items.join(",") : null;
+}
+
+function agentOpsTagsHtml(value) {
+    const items = String(value || "")
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+    if (!items.length) return '<span class="agentops-muted">no tags</span>';
+    return items.map((item) => `<span class="agentops-tag">${escapeHtml(item)}</span>`).join("");
+}
+
+function agentOpsStatusPill(status) {
+    const normalized = String(status || "unknown").toLowerCase();
+    const tone = normalized === "succeeded"
+        ? "agentops-pill-ok"
+        : normalized === "failed"
+            ? "agentops-pill-fail"
+            : "agentops-pill-muted";
+    return `<span class="agentops-pill ${tone}">${escapeHtml(normalized)}</span>`;
+}
+
+function formatAgentOpsPercent(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return "-";
+    return `${(number * 100).toFixed(1)}%`;
+}
+
+function formatAgentOpsDuration(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return "-";
+    return `${Math.round(number)} ms`;
+}
+
+function formatAgentOpsScore(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return "-";
+    return number.toFixed(3);
+}
+
+function formatAgentOpsBool(value) {
+    if (value === null || value === undefined) return '<span class="agentops-muted">n/a</span>';
+    return value
+        ? '<span class="agentops-pill agentops-pill-ok">true</span>'
+        : '<span class="agentops-pill agentops-pill-fail">false</span>';
+}
+
+function formatAgentOpsDate(value) {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return date.toLocaleString();
 }
 
 // ============================================================

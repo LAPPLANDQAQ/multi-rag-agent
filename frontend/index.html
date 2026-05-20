@@ -30,6 +30,7 @@
             <button data-tab="aiops"     class="tab-btn tab-active">🔍 AIOps 诊断</button>
             <button data-tab="chat"      class="tab-btn">💬 RAG 聊天</button>
             <button data-tab="documents" class="tab-btn">📚 知识库</button>
+            <button data-tab="agentops"  class="tab-btn">AgentOps</button>
         </nav>
     </div>
     <div class="bg-white rounded-b-xl shadow-md p-6 min-h-[600px]">
@@ -265,6 +266,107 @@
             </div>
         </section>
 
+        <!-- ====================== AgentOps Tab ====================== -->
+        <section id="tab-agentops" class="tab-pane hidden">
+            <div class="space-y-6">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800">AgentOps Console</h2>
+                        <p class="text-sm text-slate-500">Run persistence, scenarios, evals, and recorded offline demos.</p>
+                    </div>
+                    <button id="agentops-refresh" type="button"
+                        class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition">
+                        Refresh
+                    </button>
+                </div>
+
+                <div id="agentops-warning" class="hidden rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"></div>
+
+                <section class="agentops-panel">
+                    <div class="agentops-panel-head">
+                        <h3>Overview</h3>
+                        <span class="agentops-muted">GET /api/v1/agentops/summary</span>
+                    </div>
+                    <div id="agentops-summary-grid" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3"></div>
+                </section>
+
+                <section class="agentops-panel">
+                    <div class="agentops-panel-head">
+                        <h3>Run History</h3>
+                        <span class="agentops-muted">Latest 20 persisted diagnosis runs</span>
+                    </div>
+                    <div id="agentops-runs-list" class="agentops-table-wrap"></div>
+                    <div id="agentops-run-report" class="hidden mt-4 prose prose-sm max-w-none border rounded-lg bg-white p-4"></div>
+                </section>
+
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <section class="agentops-panel">
+                        <div class="agentops-panel-head">
+                            <h3>Demo Scenarios</h3>
+                            <span class="agentops-muted">Fill AIOps input only; never auto-send</span>
+                        </div>
+                        <form id="agentops-scenario-form" class="agentops-form-grid mb-4">
+                            <input name="id" class="agentops-input" placeholder="scenario id" required>
+                            <input name="title" class="agentops-input" placeholder="title" required>
+                            <input name="expected_skill" class="agentops-input" placeholder="expected_skill hint">
+                            <input name="tags" class="agentops-input" placeholder="tags, comma separated">
+                            <textarea name="input_text" class="agentops-input xl:col-span-2" rows="3" placeholder="scenario input" required></textarea>
+                            <textarea name="description" class="agentops-input xl:col-span-2" rows="2" placeholder="description"></textarea>
+                            <label class="agentops-check">
+                                <input name="is_builtin" type="checkbox" class="accent-indigo-600">
+                                <span>builtin</span>
+                            </label>
+                            <div class="agentops-form-actions">
+                                <button type="button" id="agentops-scenario-reset" class="agentops-secondary-btn">Clear</button>
+                                <button type="submit" class="agentops-primary-btn">Save scenario</button>
+                            </div>
+                        </form>
+                        <div id="agentops-scenarios-list" class="space-y-2"></div>
+                    </section>
+
+                    <section class="agentops-panel">
+                        <div class="agentops-panel-head">
+                            <h3>Eval Cases</h3>
+                            <span class="agentops-muted">CRUD plus enable/disable</span>
+                        </div>
+                        <form id="agentops-eval-case-form" class="agentops-form-grid mb-4">
+                            <input name="id" class="agentops-input" placeholder="eval case id" required>
+                            <input name="name" class="agentops-input" placeholder="name" required>
+                            <input name="expected_skill" class="agentops-input" placeholder="expected_skill">
+                            <input name="tags" class="agentops-input" placeholder="tags, comma separated">
+                            <input name="expected_tools" class="agentops-input xl:col-span-2" placeholder="expected tools, comma separated">
+                            <textarea name="input_text" class="agentops-input xl:col-span-2" rows="3" placeholder="eval input" required></textarea>
+                            <label class="agentops-check">
+                                <input name="enabled" type="checkbox" class="accent-indigo-600" checked>
+                                <span>enabled</span>
+                            </label>
+                            <div class="agentops-form-actions">
+                                <button type="button" id="agentops-eval-case-reset" class="agentops-secondary-btn">Clear</button>
+                                <button type="submit" class="agentops-primary-btn">Save eval case</button>
+                            </div>
+                        </form>
+                        <div id="agentops-eval-cases-list" class="space-y-2"></div>
+                    </section>
+                </div>
+
+                <section class="agentops-panel">
+                    <div class="agentops-panel-head">
+                        <h3>Eval Results</h3>
+                        <span class="agentops-muted">Latest 20 offline/live eval outcomes</span>
+                    </div>
+                    <div id="agentops-eval-results-list" class="agentops-table-wrap"></div>
+                </section>
+
+                <section class="agentops-panel border-amber-200 bg-amber-50">
+                    <div class="agentops-panel-head">
+                        <h3>Offline Fixtures</h3>
+                        <span class="agentops-muted">Offline recorded demo - not a live model/tool call</span>
+                    </div>
+                    <div id="agentops-fixtures-list" class="space-y-2 text-sm"></div>
+                </section>
+            </div>
+        </section>
+
     </div>
 </div>
 
@@ -273,6 +375,6 @@
 </footer>
 
 <!-- cache-busting: 改版后前端自动加载最新 JS, 避免浏览器用旧缓存 -->
-<script src="/app.js?v=20260505c"></script>
+<script src="/app.js?v=20260519-agentops"></script>
 </body>
 </html>
