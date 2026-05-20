@@ -15,6 +15,8 @@ from app.agentops.schemas import (
     DiagnosisRunList,
     DiagnosisRunRead,
     DiagnosisRunUpdate,
+    AgentOpsSummary,
+    DeleteResult,
     EvalCaseCreate,
     EvalCaseList,
     EvalCaseRead,
@@ -144,7 +146,13 @@ class AgentOpsRepository:
         self.session.refresh(row)
         return EvalCaseRead.model_validate(row)
 
-    def list_eval_cases(self, limit: int = 50, offset: int = 0) -> EvalCaseList:
+    def list_eval_cases(
+        self,
+        limit: int = 50,
+        offset: int = 0,
+        enabled_only: bool = False,
+    ) -> EvalCaseList:
+        where_clauses = [models.EvalCase.enabled.is_(True)] if enabled_only else None
         return self._list(
             models.EvalCase,
             EvalCaseRead,
@@ -152,6 +160,7 @@ class AgentOpsRepository:
             limit,
             offset,
             models.EvalCase.created_at.desc(),
+            where_clauses=where_clauses,
         )
 
     def get_eval_case(self, case_id: str) -> EvalCaseRead | None:
@@ -219,6 +228,40 @@ class AgentOpsRepository:
             average_score=float(average_score) if average_score is not None else None,
         )
 
+    def get_agentops_summary(self) -> AgentOpsSummary:
+        total_runs = self.session.scalar(select(func.count()).select_from(models.DiagnosisRun)) or 0
+        succeeded_runs = (
+            self.session.scalar(
+                select(func.count()).where(models.DiagnosisRun.status == "succeeded")
+            )
+            or 0
+        )
+        failed_runs = (
+            self.session.scalar(select(func.count()).where(models.DiagnosisRun.status == "failed"))
+            or 0
+        )
+        avg_duration_ms = self.session.scalar(select(func.avg(models.DiagnosisRun.duration_ms)))
+        total_tool_calls = self.session.scalar(select(func.sum(models.DiagnosisRun.tool_call_count))) or 0
+        eval_results = self.session.scalar(select(func.count()).select_from(models.EvalResult)) or 0
+        latest_score = self.session.scalar(
+            select(models.EvalResult.score)
+            .where(models.EvalResult.score.is_not(None))
+            .order_by(models.EvalResult.created_at.desc())
+            .limit(1)
+        )
+
+        success_rate = float(succeeded_runs / total_runs) if total_runs else 0.0
+        return AgentOpsSummary(
+            total_runs=total_runs,
+            succeeded_runs=succeeded_runs,
+            failed_runs=failed_runs,
+            success_rate=success_rate,
+            avg_duration_ms=float(avg_duration_ms) if avg_duration_ms is not None else None,
+            total_tool_calls=int(total_tool_calls),
+            eval_results=eval_results,
+            latest_eval_score=float(latest_score) if latest_score is not None else None,
+        )
+
     def _apply_values(self, row: object, values: dict[str, object]) -> None:
         for key, value in values.items():
             setattr(row, key, value)
@@ -241,10 +284,17 @@ class AgentOpsRepository:
         limit: int,
         offset: int,
         order_by: object,
+        where_clauses: list[object] | None = None,
     ):
-        total = self.session.scalar(select(func.count()).select_from(model)) or 0
+        count_stmt = select(func.count()).select_from(model)
+        query_stmt = select(model)
+        for clause in where_clauses or []:
+            count_stmt = count_stmt.where(clause)
+            query_stmt = query_stmt.where(clause)
+
+        total = self.session.scalar(count_stmt) or 0
         rows: Sequence[object] = self.session.scalars(
-            select(model).order_by(order_by).limit(limit).offset(offset)
+            query_stmt.order_by(order_by).limit(limit).offset(offset)
         ).all()
         return list_schema(
             items=[read_schema.model_validate(row) for row in rows],

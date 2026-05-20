@@ -67,9 +67,13 @@ class AgentOpsService:
         with self.session_factory() as session:
             return AgentOpsRepository(session).create_eval_case(payload)
 
-    def list_eval_cases(self, limit: int = 50, offset: int = 0):
+    def list_eval_cases(self, limit: int = 50, offset: int = 0, enabled_only: bool = False):
         with self.session_factory() as session:
-            return AgentOpsRepository(session).list_eval_cases(limit=limit, offset=offset)
+            return AgentOpsRepository(session).list_eval_cases(
+                limit=limit,
+                offset=offset,
+                enabled_only=enabled_only,
+            )
 
     def get_eval_case(self, case_id: str):
         with self.session_factory() as session:
@@ -98,6 +102,10 @@ class AgentOpsService:
     def get_eval_result_summary(self):
         with self.session_factory() as session:
             return AgentOpsRepository(session).get_eval_result_summary()
+
+    def get_agentops_summary(self):
+        with self.session_factory() as session:
+            return AgentOpsRepository(session).get_agentops_summary()
 
 
 agentops_service = AgentOpsService()
