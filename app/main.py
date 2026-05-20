@@ -26,8 +26,9 @@ from fastapi.staticfiles import StaticFiles
 from loguru import logger
 
 from app.api.middleware import setup_middlewares
-from app.api.v1 import agentops, aiops, chat, documents, health, skills, webhook
+from app.api.v1 import agentops, aiops, chat, documents, health, metrics, skills, webhook
 from app.config import settings
+from app.core.metrics import setup_metrics
 from app.core.mcp_client import mcp_client_manager
 from app.core.milvus import milvus_manager
 from app.exceptions import AppException
@@ -87,6 +88,7 @@ app = FastAPI(
 # 中间件
 # ============================================================
 setup_middlewares(app)
+setup_metrics(app)
 
 
 # ============================================================
@@ -148,6 +150,7 @@ app.include_router(documents.router, prefix=API_PREFIX)
 app.include_router(skills.router, prefix=API_PREFIX)
 app.include_router(webhook.router, prefix=API_PREFIX)
 app.include_router(agentops.router, prefix=API_PREFIX)
+app.include_router(metrics.router)
 
 
 # ============================================================
