@@ -8,7 +8,7 @@ Git commit baseline: `801c7453c19f5e6f6793d1e17df69193b1772acd`
 
 Do not pre-claim the selected Skill. Start the request, observe the actual `skill_selected` SSE event, and narrate what the system selected.
 
-Do not claim live benchmark results. Phase B found no local benchmark/eval script for README token or RAG MRR claims.
+Do not claim benchmark-grade model accuracy. The current EvalOps runner is a lightweight offline fixture evaluator for recorded SSE streams; it is useful for regression and demo stability, not for broad production-quality claims.
 
 ## Setup Checks
 
@@ -37,6 +37,36 @@ Expected observations:
 - open-webSearch health depends on the daemon running on port 3210.
 
 Phase B environment note: Docker daemon and key local ports were not available during the benchmark check. Re-run setup checks before presenting a live demo.
+
+## AgentOps / EvalOps 3-5 Minute Demo Flow
+
+1. Start services:
+
+   ```powershell
+   docker compose up -d
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\run.ps1
+   ```
+
+2. Open `http://localhost:9900` and start on the AIOps Diagnosis tab.
+3. Run one live diagnosis with a safe public/demo input. Narrate the observed `skill_selected`, `plan`, `tool_call`, `usage`, `report`, and `complete` SSE events as they appear.
+4. Switch to the AgentOps tab and refresh the dashboard. Show that the run was saved as side-channel AgentOps data without changing the LangGraph diagnosis topology.
+5. Open the saved run report and explain that the Markdown report is persisted for review, while secrets/private logs should not be used in demo inputs.
+6. Show demo scenarios and eval cases. Emphasize that scenarios fill inputs and eval cases define expected routing/evidence hints; they do not force the live agent to take a path.
+7. Run offline eval:
+
+   ```powershell
+   python scripts\run_agent_eval.py --mode offline
+   ```
+
+   Show `docs/portfolio/eval_report.md`. If no real fixture is installed, explain that sample size is `0` and the command still validates the deterministic reporting path.
+8. Open either `http://localhost:9900/api/v1/agentops/summary` or `http://localhost:9900/metrics` to show operational visibility.
+9. Close with reliability work: `pytest -q` for local regression tests and `.github/workflows/ci.yml` for CI checks.
+
+Fallback path:
+- If the LLM provider is unavailable, use offline fixture playback and clearly label it as recorded replay.
+- If Milvus is unavailable, show AgentOps history, scenario/eval CRUD, and offline eval rather than claiming live RAG evidence.
+- If open-webSearch is unavailable, set `WEB_SEARCH_PROVIDER=mock` or explain that web search is an optional provider.
+- If Docker is unavailable, avoid container mutation and demonstrate host/network/database read-only paths instead.
 
 ## Demo Input 1: Local Resource Diagnosis
 
@@ -214,4 +244,4 @@ Before recording or screensharing:
 
 End with:
 
-"This demo shows how I packaged and verified an existing Skill-first AIOps/RAG system: the runtime chooses a Skill, plans steps, calls gated read-only tools, streams SSE events, and produces a Markdown report. The portfolio docs separate verified facts from claims that still need reproducible benchmarks."
+"This demo shows how I extended and verified an existing Skill-first AIOps/RAG system: the runtime chooses a Skill, plans steps, calls gated read-only tools, streams SSE events, and produces a Markdown report. My AgentOps/EvalOps additions persist run summaries, expose a console and APIs, replay recorded fixtures, run lightweight offline eval, and add metrics, cache, tests, and CI. The portfolio docs separate upstream capabilities, my engineering enhancements, and experimental future work."

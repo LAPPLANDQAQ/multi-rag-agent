@@ -1,12 +1,12 @@
 # Agent Eval Report
 
 ## Run Metadata
-- commit: d2fea97
-- run_time: 2026-05-19T14:13:19+00:00
+- commit: 4b85e9d
+- run_time: 2026-05-20T00:35:32+00:00
 - mode: offline
 - sample_size: 0
 - fixtures_dir: frontend/demo_fixtures
-- saved_eval_result_id: fac0809e946a4bc5896f89f7699c53d6
+- saved_eval_result_id: d14874f535d24e64ac921769da515019
 
 ## Metrics
 - skill_match_rate: null

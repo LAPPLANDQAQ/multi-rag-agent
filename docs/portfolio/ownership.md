@@ -32,6 +32,15 @@ Anything marked **Upstream** must never be described as "implemented by me", "de
 | `frontend/index.html`, `frontend/app.js`, `frontend/styles.css` browser-side Markdown export | Mine: demo packaging addition | added browser-only report export | Phase F adds a client-side `.md` download after final report generation. No backend endpoint, PDF export, email, webhook, or server-side report storage is added. |
 | `app/skills/definitions/database_connection_diagnosis/` | Mine: newly added Skill | added / validated staged Skill | Phase G adds one low-risk database connection diagnosis Skill after staging validation. It uses only existing read-only tools and does not add database credentials or write operations. |
 | `scripts/validate_skill.py` | Mine: newly added validator | added / validated Skill validator | Phase G adds a read-only offline validator for one `SKILL.md` file. It does not start servers or mutate data. |
+| `app/agentops/*` | Mine: AgentOps engineering enhancement | added SQLAlchemy data layer and service facade | Additive business data layer for diagnosis runs, demo scenarios, eval cases, and eval results. Does not replace the upstream LangGraph diagnosis graph. |
+| `app/api/v1/agentops.py` | Mine: AgentOps engineering enhancement | added RESTful AgentOps APIs | CRUD/read APIs for AgentOps records. Safe to describe as an added API layer around existing diagnosis behavior. |
+| `app/agentops/eval.py` | Mine: EvalOps engineering enhancement | added offline fixture evaluation | Deterministic eval helper for recorded SSE fixtures. Do not claim benchmark-grade model quality from smoke-level fixture metrics. |
+| `scripts/run_agent_eval.py` | Mine: EvalOps engineering enhancement | added offline eval CLI | Runs offline fixture evaluation and writes a Markdown report. Live mode is intentionally not implemented yet. |
+| `app/core/metrics.py` | Mine: observability enhancement | added Prometheus-style metrics | Exposes application counters/histograms through `/metrics`. Use coarse labels only; do not claim full OpenTelemetry tracing. |
+| `app/core/cache.py` | Mine: cache enhancement | added optional memory/Redis cache abstraction | Used only for low-risk read-only AgentOps data. Redis is optional and memory fallback works. |
+| `.github/workflows/ci.yml` | Mine: CI enhancement | added conservative GitHub Actions checks | Python compile/pip/pytest and Node audit/build/test checks. Uses dummy CI env values and no real API keys. |
+| `tests/*` | Mine: regression test suite | added pytest coverage for AgentOps, EvalOps, metrics, cache, fixtures, and smoke scripts | Test suite validates added layers and selected existing contracts. Do not claim it exhaustively tests every upstream runtime path. |
+| `frontend/index.html`, `frontend/app.js`, `frontend/styles.css` AgentOps tab changes | Mine: AgentOps Web Console enhancement | added console UI for runs, scenarios, eval cases, eval results, and recorded fixture playback | Frontend console calls AgentOps APIs and reuses recorded fixture workflow. It is a local demo/admin console, not a production deployment claim. |
 
 ## Safe Resume Framing
 
@@ -39,6 +48,7 @@ Safe:
 - "Packaged and verified an open-source Multi-Agent AIOps/RAG project for reproducible local demos."
 - "Documented ownership boundaries, SSE contract, dependency audit, and local runtime facts."
 - "Analyzed the existing LangGraph Skill-first diagnosis flow and MCP tool integration."
+- "Added an AgentOps/EvalOps layer with SQLAlchemy persistence, REST APIs, a web console, offline fixture evaluation, metrics, cache, pytest coverage, and CI around the existing diagnosis flow."
 
 Unsafe:
 - "I implemented the full LangGraph multi-agent architecture."
