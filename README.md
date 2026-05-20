@@ -1,55 +1,36 @@
-# Multi-Agent AIOps OnCall Copilot with AgentOps Console
+# 多智能体智能运维诊断平台
 
-A Multi-Agent AIOps diagnosis platform based on RAG, MCP, LangGraph, Milvus, Redis, and SSE streaming. It supports Skill-first diagnosis, RAG retrieval, read-only MCP tools, Markdown reports, AgentOps run history, EvalOps offline evaluation, Prometheus metrics, Redis/Memory cache, pytest, and GitHub Actions CI.
+面向 OnCall / SRE 场景的多智能体智能运维诊断系统。项目围绕告警、故障现象和运维问答构建，支持 Skill 路由、诊断计划生成、只读工具调用、RAG 知识库检索、SSE 流式过程展示、Markdown 诊断报告、AgentOps 运行记录、EvalOps 离线评估、指标监控和本地演示控制台。
 
-面向 OnCall / SRE 场景的多智能体智能运维诊断平台。系统围绕告警、故障现象和运维问答构建，支持 Skill 路由、诊断计划生成、只读工具调用、RAG 知识库检索、SSE 流式过程展示和 Markdown 诊断报告输出。
-
-项目基于 `FastAPI`、`LangGraph`、`LangChain`、`Milvus`、`Redis`、`MCP / FastMCP`、DashScope/Qwen 兼容模型以及可选 DeepSeek / 本地 OpenAI-style LLM 运行。
-
-![Python](https://img.shields.io/badge/Python-3.11%2B-blue)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-green)
-![LangGraph](https://img.shields.io/badge/LangGraph-Agent-orange)
-![Milvus](https://img.shields.io/badge/Milvus-VectorDB-purple)
-![MCP](https://img.shields.io/badge/MCP-Tools-black)
+项目核心基于 `FastAPI`、`LangGraph`、`LangChain`、`Milvus`、`Redis`、`MCP / FastMCP`、DashScope/Qwen 兼容模型和可选本地模型运行。依赖版本以 `requirements.txt`、`open-webSearch-main/package.json` 和锁文件为准。
 
 ## 核心能力
 
-- **Skill-first 诊断流程**：先由 Skill Router 判断故障类型，再让 Planner 基于对应 Playbook 生成诊断计划，减少无关 SOP 和工具列表进入上下文。
-- **Plan-Execute-Replan 闭环**：通过 `SkillRouter -> Planner -> Executor -> Replanner -> Report` 的 LangGraph 流程执行诊断，支持证据不足时继续收集或调整计划。
-- **运行时控制面**：`app/runtime/agent_harness.py` 统一管理 prompt、模型选择、重路由限制、Replanner 快路径、统计事件、预算告警和降级文本。
-- **RAG 知识库**：使用 DashScope Embedding + Milvus，支持内置 OnCall SOP 与 Prometheus 告警语料检索。
-- **Hybrid Search + Rerank**：支持 BM25 + Vector 融合召回，并可通过 DashScope `gte-rerank-v2` 做精排；组件不可用时自动降级。
-- **MCP 工具服务**：接入本机系统、联网搜索、Windows 事件日志、网络诊断和 Docker 只读诊断工具。
-- **工具权限边界**：通过 Skill 白名单、工具风险元数据和 `PERMISSION_MODE` 控制工具调用；`docker_restart` 等高风险操作默认禁用。
-- **并行只读工具调用**：对互不依赖且标记为安全的只读工具进行批量并发执行，降低多工具诊断等待时间。
-- **RAG Chat + 会话记忆**：提供独立知识库问答接口，可选 Redis 会话记忆、多轮问题改写、摘要压缩、MCP 工具增强和受控联网搜索。
-- **SSE 可观测输出**：前端可实时展示 Skill 选择、计划、步骤、工具调用、token/耗时统计、预算提示和最终报告。
-- **本地 LLM 兜底**：支持在主模型不可达或开发调试时切换到本地 OpenAI 兼容服务，例如 Ollama。
-
-## 当前 Skill
-
-| Skill | 适用场景 | 风险级别 |
-|---|---|---|
-| `host_resource_diagnosis` | 本机 CPU、内存、磁盘、进程和 Windows 日志排查 | low |
-| `network_diagnosis` | DNS、Ping、HTTP、端口连通性和网络超时排查 | low |
-| `container_diagnosis` | Docker 容器状态、资源、日志、inspect 诊断 | medium |
-| `database_connection_diagnosis` | MySQL、PostgreSQL、Redis 等数据库连接超时、拒绝、DNS/端口问题 | low |
-| `generic_oncall` | 通用 OnCall 排障兜底路径 | low |
+- **Skill 优先诊断**：先根据故障输入选择合适 Skill，再使用对应 Playbook 生成诊断计划，减少无关上下文和无关工具。
+- **计划-执行-复盘闭环**：通过 `SkillRouter -> Planner -> Executor -> Replanner -> Report` 流程完成诊断，证据不足时继续收集或调整计划。
+- **RAG 知识库**：使用 DashScope Embedding + Milvus 管理内置 OnCall SOP、Prometheus 告警语料和用户上传文档。
+- **混合检索与精排**：支持 BM25 + Vector 融合召回和 DashScope rerank；组件不可用时自动降级。
+- **MCP 工具接入**：接入本机系统、联网搜索、Windows 事件日志、网络诊断和 Docker 诊断工具。
+- **工具权限边界**：通过 Skill 白名单、工具风险元数据和 `PERMISSION_MODE` 控制工具调用；高风险操作默认禁用。
+- **RAG Chat**：提供独立知识库问答接口，支持会话记忆、多轮改写、摘要压缩、MCP 工具增强和受控联网搜索。
+- **流式可观测输出**：前端实时展示 Skill 选择、诊断计划、步骤执行、工具调用、token/耗时统计、预算提示和最终报告。
+- **AgentOps / EvalOps**：记录诊断运行、管理演示场景和评测用例，支持真实 SSE 录制回放、离线评估和结果留存。
+- **工程化验证**：提供 pytest 测试、Prometheus 风格指标、可选 Redis/内存缓存和 GitHub Actions CI。
 
 ## 架构概览
 
 ```mermaid
 flowchart TD
-    A[User / Alertmanager Webhook] --> B[FastAPI API Layer]
+    A[用户输入 / 告警 Webhook] --> B[FastAPI 接口层]
 
     B --> C[Skill Router]
-    C --> D{Select Skill}
+    C --> D{选择 Skill}
 
-    D -->|host_resource_diagnosis| E1[Host Resource Skill]
-    D -->|network_diagnosis| E2[Network Skill]
-    D -->|container_diagnosis| E3[Container Skill]
-    D -->|database_connection_diagnosis| E4[Database Connection Skill]
-    D -->|generic_oncall| E5[Generic OnCall Skill]
+    D -->|host_resource_diagnosis| E1[主机资源诊断 Skill]
+    D -->|network_diagnosis| E2[网络诊断 Skill]
+    D -->|container_diagnosis| E3[容器诊断 Skill]
+    D -->|database_connection_diagnosis| E4[数据库连接诊断 Skill]
+    D -->|generic_oncall| E5[通用 OnCall Skill]
 
     E1 --> F[Planner]
     E2 --> F
@@ -58,80 +39,65 @@ flowchart TD
     E5 --> F
 
     F --> G[Executor]
-    G --> H1[RAG Retrieval]
-    G --> H2[MCP Tools]
-    G --> H3[System / Docker / Network / Winlog]
+    G --> H1[RAG 检索]
+    G --> H2[MCP 工具]
+    G --> H3[系统 / Docker / 网络 / 事件日志]
 
-    H1 --> I[Evidence]
+    H1 --> I[证据汇总]
     H2 --> I
     H3 --> I
 
     I --> J[Replanner]
-    J -->|continue| G
-    J -->|enough evidence| K[Report Generator]
+    J -->|继续收集| G
+    J -->|证据充分| K[报告生成]
 
-    K --> L[SSE Streaming Response]
-    L --> M[Frontend Monitoring Panel]
+    K --> L[SSE 流式响应]
+    L --> M[前端监控面板]
 ```
 
-核心链路仍然是 Skill-first 的诊断闭环：
+核心链路保持 Skill 优先的诊断闭环：
 
-1. 用户输入故障描述，或 Alertmanager Webhook 推送告警。
-2. Skill Router 选择最匹配的诊断 Skill。
-3. Planner 基于 Skill Playbook 生成诊断步骤。
-4. Executor 调用 RAG 和被允许的 MCP 工具收集证据。
-5. Replanner 判断继续执行、调整计划、切换 Skill 或收敛输出。
-6. Report 生成结构化 Markdown 诊断报告，并通过 SSE 返回前端。
+1. 用户输入故障描述，或由 Alertmanager 告警回调推送告警。
+2. Skill 路由器选择最匹配的诊断 Skill。
+3. 规划器基于 Skill Playbook 生成诊断步骤。
+4. 执行器调用 RAG 和允许的 MCP 工具收集证据。
+5. 复盘器判断继续执行、调整计划、切换 Skill 或收敛输出。
+6. 报告节点生成结构化 Markdown 诊断报告，并通过 SSE 返回前端。
 
-## AgentOps / EvalOps Console
+AgentOps / EvalOps 是围绕主诊断链路增加的旁路能力：运行记录、场景管理、评测用例、离线回放、评估结果和指标展示都不替换原有 LangGraph 诊断流程。
 
-This repository includes an additive AgentOps layer around the existing AIOps diagnosis flow. It does not replace the LangGraph diagnosis pipeline. It records diagnosis runs, manages demo scenarios and eval cases, stores eval results, and exposes a lightweight web console for run history and offline fixture replay.
+## 当前 Skill
 
-The AgentOps Console surfaces Diagnosis Run History, Demo Scenarios, Eval Cases, Eval Results, Offline Fixture Replay, Prometheus Metrics, Redis/Memory Cache behavior, Pytest coverage, GitHub Actions CI status, and the Codex Workflow documentation.
+| Skill | 适用场景 | 风险级别 |
+|---|---|---|
+| `host_resource_diagnosis` | 本机 CPU、内存、磁盘、进程和 Windows 日志排查 | 低 |
+| `network_diagnosis` | DNS、Ping、HTTP、端口连通性和网络超时排查 | 低 |
+| `container_diagnosis` | Docker 容器状态、资源、日志和 inspect 诊断 | 中 |
+| `database_connection_diagnosis` | MySQL、PostgreSQL、Redis 等连接超时、拒绝、DNS/端口问题 | 低 |
+| `generic_oncall` | 通用 OnCall 排障兜底路径 | 低 |
 
-### Capabilities
+## 控制台功能
 
-- Diagnosis run history persisted through the existing SSE diagnosis path.
-- Demo scenario management for repeatable interview/demo inputs.
-- Eval case management and offline fixture evaluation.
-- Eval results storage for offline and optional live evaluation runs.
-- Offline Fixture Replay in the web console using reviewed recorded SSE streams.
-- Prometheus-style metrics at `GET /metrics`.
-- Optional memory/Redis cache for low-risk read-only AgentOps data.
-- pytest coverage and GitHub Actions CI checks.
+前端页面已整理为模块化结构，入口为 `frontend/index.html`，脚本位于 `frontend/js/`，样式位于 `frontend/styles/`。
 
-### AgentOps APIs
+| 区域 | 功能 |
+|---|---|
+| AIOps 诊断 | 输入故障、启动诊断、查看 SSE 步骤流、工具调用、token 统计和最终报告 |
+| RAG 聊天 | 基于知识库进行问答，可选联网搜索和工具增强 |
+| 知识库 | 上传、查看和删除知识库文档 |
+| AgentOps 控制台 | 查看运行概览、诊断历史、报告、场景库、评测用例和评测结果 |
+| 离线录制文件 | 使用审核后的真实 SSE 录制文件进行回放和离线评估 |
+| 指标与告警 | 查看 `/metrics` 指标和 Alertmanager 告警回调历史 |
 
-- `GET /api/v1/agentops/summary`
-- `GET /api/v1/agentops/runs`
-- `GET /api/v1/agentops/runs/{run_id}`
-- `DELETE /api/v1/agentops/runs/{run_id}`
-- `GET/POST/PUT/DELETE /api/v1/agentops/scenarios`
-- `GET/POST/PUT/DELETE /api/v1/agentops/eval-cases`
-- `GET /api/v1/agentops/eval-results`
+RAG Chat 已支持模型或工具执行失败时的降级收尾：接口会返回降级进度、可展示回答和统计信息，避免前端把整条检索流程判定为硬中断。
 
-### Metrics
+## AgentOps 与 EvalOps
 
-- `GET /metrics`
-- HTTP request count and duration metrics.
-- AIOps run, SSE event, tool-call, and error counters.
-- AgentOps CRUD and persisted run counters.
-- EvalOps score/case metrics.
-- Cache hit/miss counters for memory or Redis backends.
+AgentOps 采用本地 SQLite / SQLAlchemy 持久化诊断运行、演示场景、评测用例和评测结果。相关接口挂载在 `/api/v1/agentops/*`，可供前端控制台查询和维护本地演示数据。
 
-### Cache
+EvalOps 通过 `scripts/run_agent_eval.py` 读取 `frontend/demo_fixtures/manifest.json` 中登记的真实录制文件。仓库默认不提交真实运行数据；没有样本时会生成 `sample_size = 0` 的报告，用于验证评估链路、报告格式和结果入库流程，不伪造评估数据。
 
-`app/core/cache.py` provides a conservative Redis/Memory cache abstraction. Redis is optional; when Redis is unavailable or disabled, the project falls back to in-memory TTL cache or no-op cache behavior. The cache is used only for low-risk read-only AgentOps summaries/lists and does not cache complete diagnosis reports by default.
-
-### Testing
-
-The pytest suite covers AgentOps repository behavior, AgentOps APIs, EvalOps metrics, fixture schema checks, Skill validation, metrics, cache behavior, and smoke script expectations. Tests avoid exact natural-language LLM assertions and do not require real LLM keys, Milvus, Redis, Docker Compose, or external model calls.
-
-### CI
-
-`.github/workflows/ci.yml` runs deterministic Python and Node checks: `compileall`, `pip check`, `pytest`, `npm ci`, `npm audit --audit-level=high`, `npm run build`, and `npm test`. The workflow uses dummy environment values so CI validates integration quality without depending on live LLM credentials.
-
-### Eval And Verification Commands
+常用验证命令：
 
 ```powershell
 python scripts\run_agent_eval.py --mode offline
@@ -140,64 +106,18 @@ python -m compileall -q app mcp_servers scripts
 python scripts\validate_skill.py
 ```
 
-The repository also includes `.github/workflows/ci.yml` with conservative Python and Node checks. The CI uses dummy environment values and does not require real API keys, Milvus, Redis, Docker Compose, or external LLM access for unit tests.
-
-### Resume-Safe Wording
-
-- Designed an AgentOps data layer and RESTful APIs with SQLAlchemy to manage diagnosis runs, demo scenarios, eval cases, and eval results.
-- Persisted live SSE diagnosis summaries as side-channel run records without modifying the LangGraph diagnosis topology.
-- Built an AgentOps Web Console for run history, report review, scenario management, eval case management, and real recorded fixture playback.
-- Implemented lightweight offline Agent Eval based on real SSE fixtures, tracking skill match, completion, report generation, tool-call success, errors, and latency.
-- Added pytest tests, Prometheus-style metrics, optional cache layer, and GitHub Actions CI to improve reliability and maintainability.
-
 ## 技术栈
 
-当前依赖基线以 `requirements.txt` 和 `open-webSearch-main/package.json` 为准，核心库保持在已验证的大版本范围内，避免直接跨到破坏性主版本。
+技术栈只列核心组成，具体版本以依赖文件为准。
 
-### Python / Agent 后端
-
-| 层级 | 技术与版本范围 | 作用 |
+| 层级 | 主要技术 | 作用 |
 |---|---|---|
-| Web API | `fastapi>=0.136.1,<1.0.0`、`uvicorn[standard]>=0.47.0,<1.0.0` | HTTP API、OpenAPI、静态前端挂载 |
-| SSE 流式输出 | `sse-starlette>=3.4.4,<4.0.0` | AIOps 诊断和 RAG Chat 的流式事件返回 |
-| Agent 编排 | `langgraph>=1.2.0,<2.0.0`、`langgraph-checkpoint>=4.1.0,<5.0.0` | SkillRouter、Planner、Executor、Replanner、Report 流程编排 |
-| LangChain v1 | `langchain>=1.3.1,<2.0.0`、`langchain-core>=1.4.0,<2.0.0`、`langchain-openai>=1.2.1,<2.0.0` | LLM、工具绑定、消息模型、OpenAI-compatible 调用 |
-| 配置与校验 | `pydantic>=2.13.4,<3.0.0`、`pydantic-settings>=2.14.1,<3.0.0`、`python-dotenv>=1.2.2,<2.0.0` | `.env` 配置、请求/响应模型、运行时校验 |
-| 日志 | `loguru>=0.7.3,<1.0.0` | 应用日志与诊断过程日志 |
-
-### LLM / RAG / 数据层
-
-| 层级 | 技术与版本范围 | 作用 |
-|---|---|---|
-| Chat LLM | DashScope/Qwen OpenAI 兼容接口，兼容 DeepSeek OpenAI-style API | Router、Planner、Executor、Report、RAG Chat |
-| 本地 LLM 兜底 | OpenAI-compatible local LLM，例如 Ollama `http://localhost:11434/v1` | 主模型不可达或离线开发时的可选兜底 |
-| Embedding | DashScope `text-embedding-v4` | 文档向量化 |
-| 向量数据库 | `pymilvus>=2.6.14,<3.0.0`、`langchain-milvus>=0.3.3,<0.4.0` | Milvus Collection 管理与向量检索 |
-| Hybrid Search | `rank-bm25>=0.2.2,<0.3.0` + Vector + RRF | 精确关键词召回与向量召回融合 |
-| Rerank | DashScope `gte-rerank-v2` | 候选文档精排 |
-| 会话记忆 | `redis>=7.4.0,<8.0.0` | RAG Chat 历史、摘要和最近诊断报告缓存 |
-
-### 工具 / 搜索 / 前端运行时
-
-| 层级 | 技术与版本范围 | 作用 |
-|---|---|---|
-| MCP 工具协议 | `fastmcp>=3.3.1,<4.0.0`、`langchain-mcp-adapters>=0.2.2,<0.3.0` | 系统、网络、Windows 日志、Docker、联网搜索工具接入 |
-| 本机诊断 | `psutil>=7.2.2,<8.0.0` | CPU、内存、磁盘、进程等本机指标 |
-| HTTP 客户端 | `httpx>=0.28.1,<1.0.0` | Rerank、联网搜索、本地/远程服务调用 |
-| 文档处理 | `markdown-it-py>=4.2.0,<5.0.0`、`PyYAML>=6.0.3,<7.0.0`、`tiktoken>=0.13.0,<1.0.0` | Markdown/SOP 处理、Skill 元数据、token 估算 |
-| 前端 | HTML + TailwindCSS + Vanilla JS | 诊断面板、SSE 事件展示、报告渲染 |
-| 容器依赖 | Docker Compose + Milvus + etcd + MinIO + Attu + Redis + open-webSearch | 本地完整运行环境 |
-
-### open-webSearch 子项目
-
-| 层级 | 技术与版本范围 | 作用 |
-|---|---|---|
-| Node 运行时 | Node.js `>=20.18.1` | open-webSearch 本地 daemon |
-| 构建语言 | TypeScript `^5.3.3` | 搜索服务源码构建 |
-| HTTP 服务 | Express `^4.22.2` + CORS | 本地搜索 HTTP API |
-| MCP SDK | `@modelcontextprotocol/sdk ^1.29.0` | MCP 适配 |
-| 网页解析 | Axios、Cheerio、Mozilla Readability、JSDOM | 搜索结果和网页正文抓取 |
-| 安全与系统适配 | `request-filtering-agent`、`ipaddr.js`、`koffi`、`zod` | URL 安全、地址过滤、原生能力和 schema 校验 |
+| 接口与流式通信 | FastAPI、Uvicorn、sse-starlette | HTTP API、静态前端挂载、SSE 诊断流和 RAG Chat 流 |
+| 诊断编排 | LangGraph、LangChain、Pydantic | Skill 路由、计划生成、工具绑定、状态流转和模型输入输出校验 |
+| 模型与检索 | DashScope/Qwen、Milvus、BM25、RRF、rerank、Redis | 对话生成、向量检索、混合召回、精排和会话记忆 |
+| 工具系统 | MCP / FastMCP、psutil、httpx、open-webSearch | 本机诊断、网络诊断、Docker 诊断、事件日志和受控联网搜索 |
+| 数据与观测 | SQLite、SQLAlchemy、Prometheus 风格指标、可选 Redis 缓存 | AgentOps 记录、评估结果、运行指标和低风险缓存 |
+| 前端与工程 | HTML、CSS、原生 JavaScript、Docker Compose、pytest、GitHub Actions | 本地控制台、容器化依赖、回归测试和 CI 检查 |
 
 ## 快速开始
 
@@ -241,7 +161,7 @@ PERMISSION_MODE=normal
 DOCKER_ALLOW_RESTART=false
 ```
 
-如需离线或本地模型兜底，可启用：
+如需本地模型兜底，可启用：
 
 ```env
 LOCAL_LLM_ENABLED=true
@@ -255,7 +175,7 @@ LOCAL_LLM_MODEL=qwen2.5:7b
 docker compose up -d
 ```
 
-Docker Compose 会启动 Milvus、etcd、MinIO、Attu、Redis 和 open-webSearch。
+该命令会启动 Milvus、etcd、MinIO、Attu、Redis 和 open-webSearch。
 
 ### 5. 导入知识库
 
@@ -287,13 +207,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\run.ps1
 默认服务地址：
 
 ```text
-FastAPI        http://localhost:9900
-system MCP     http://localhost:8005/mcp
-websearch MCP  http://localhost:8006/mcp
-winlog MCP     http://localhost:8008/mcp
-network MCP    http://localhost:8009/mcp
-docker MCP     http://localhost:8011/mcp
-open-webSearch http://127.0.0.1:3210
+主应用             http://localhost:9900
+系统工具服务       http://localhost:8005/mcp
+联网搜索工具服务   http://localhost:8006/mcp
+事件日志工具服务   http://localhost:8008/mcp
+网络诊断工具服务   http://localhost:8009/mcp
+Docker 工具服务    http://localhost:8011/mcp
+本地搜索服务       http://127.0.0.1:3210
 ```
 
 停止服务：
@@ -306,12 +226,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\run.ps1 -Stop
 
 | 页面 | 地址 |
 |---|---|
-| Web UI | http://localhost:9900 |
-| Swagger | http://localhost:9900/docs |
-| ReDoc | http://localhost:9900/redoc |
+| 前端控制台 | http://localhost:9900 |
+| 接口文档 | http://localhost:9900/docs |
+| 备用接口文档 | http://localhost:9900/redoc |
 | 健康检查 | http://localhost:9900/api/v1/health |
 | 就绪检查 | http://localhost:9900/api/v1/health/ready |
-| Attu Milvus UI | http://localhost:8000 |
+| Milvus 管理页面 | http://localhost:8000 |
+| 运行指标 | http://localhost:9900/metrics |
 
 ## 使用示例
 
@@ -329,9 +250,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\run.ps1 -Stop
 Redis 实例 redis-master-01 连接超时，应用日志提示 connection pool exhausted
 ```
 
-系统会优先收集可安全检查的 DNS、端口、HTTP 和知识库证据，不请求或使用数据库账号、密码、DSN 等敏感信息。
+系统会优先收集 DNS、端口、HTTP 和知识库证据，不请求或使用数据库账号、密码、DSN 等敏感信息。
 
-### Alertmanager Webhook 模拟
+### 告警 Webhook 模拟
 
 ```powershell
 python scripts\mock_alert.py --scenario redis
@@ -343,7 +264,7 @@ python scripts\mock_alert.py --list-history
 | 功能 | 方法 | 路径 |
 |---|---|---|
 | AIOps 诊断，SSE | POST | `/api/v1/aiops/diagnose` |
-| Alertmanager Webhook | POST | `/api/v1/webhook/alertmanager` |
+| 告警 Webhook | POST | `/api/v1/webhook/alertmanager` |
 | RAG Chat，SSE | POST | `/api/v1/chat/stream` |
 | RAG Chat 历史 | GET | `/api/v1/chat/sessions/{session_id}/history` |
 | 清空 RAG Chat 会话 | DELETE | `/api/v1/chat/sessions/{session_id}` |
@@ -351,6 +272,11 @@ python scripts\mock_alert.py --list-history
 | 上传文档 | POST | `/api/v1/documents/upload` |
 | 文档列表 | GET | `/api/v1/documents` |
 | 删除文档 | DELETE | `/api/v1/documents/{source}` |
+| AgentOps 概览 | GET | `/api/v1/agentops/summary` |
+| AgentOps 运行历史 | GET | `/api/v1/agentops/runs` |
+| AgentOps 场景库 | GET/POST/PUT/DELETE | `/api/v1/agentops/scenarios` |
+| EvalOps 用例 | GET/POST/PUT/DELETE | `/api/v1/agentops/eval-cases` |
+| EvalOps 结果 | GET | `/api/v1/agentops/eval-results` |
 | 健康检查 | GET | `/api/v1/health` |
 | 就绪检查 | GET | `/api/v1/health/ready` |
 
@@ -364,14 +290,14 @@ X-KB-Admin-Token: your-admin-token
 
 | 配置 | 默认值 | 说明 |
 |---|---|---|
-| `AGENT_MAX_STEPS` | `5` | 单次诊断最大 Plan-Execute 步数 |
+| `AGENT_MAX_STEPS` | `5` | 单次诊断最大步骤数 |
 | `AGENT_MAX_REROUTES` | `1` | Replanner 允许切换 Skill 的最大次数 |
 | `EXECUTOR_PARALLEL_ENABLED` | `true` | 是否启用只读工具并行执行 |
 | `EXECUTOR_MAX_PARALLEL` | `6` | 单批并行工具上限 |
 | `RAG_TOP_K` | `3` | 最终送入回答的文档数量 |
 | `RAG_RETRIEVE_K` | `20` | 精排前候选数量 |
 | `RAG_HYBRID_ENABLED` | `true` | 是否启用 BM25 + Vector 融合 |
-| `RAG_RERANK_ENABLED` | `true` | 是否启用 reranker |
+| `RAG_RERANK_ENABLED` | `true` | 是否启用精排 |
 | `RAG_CHAT_MEMORY_ENABLED` | `false` | 是否启用 Redis 会话记忆 |
 | `RAG_CHAT_WEB_SEARCH_ENABLED` | `false` | RAG Chat 是否允许受控联网搜索 |
 | `PERMISSION_MODE` | `normal` | 工具权限模式 |
@@ -381,41 +307,38 @@ X-KB-Admin-Token: your-admin-token
 
 ## 性能与评估数据
 
-原评估体系包含 benchmark 和 RAG 离线评估脚本，覆盖 token 开销、工具执行延迟和 RAG 检索准确率三类指标。当前 README 保留原评估口径和量化结果，便于展示系统优化前后的实际收益。
+项目内置基准测试和 RAG 离线评估脚本，覆盖 token 开销、工具执行延迟和 RAG 检索准确率。当前 README 保留原评估口径和量化结果，便于展示优化前后的收益。
 
-| 指标 | 优化结果 |
+| 指标 | 结果 |
 |---|---|
-| Planner prompt tokens | `9098 -> 575`，下降 93.5% |
-| 全链路 prompt tokens | `10526 -> 2450`，下降 76.7% |
-| 全链路 total tokens | `11889 -> 3988`，下降 66.5% |
-| 工具 catalog prompt tokens | 下降 55.3% |
+| Planner 输入 tokens | `9098 -> 575`，下降 93.5% |
+| 全链路输入 tokens | `10526 -> 2450`，下降 76.7% |
+| 全链路总 tokens | `11889 -> 3988`，下降 66.5% |
+| 工具目录输入 tokens | 下降 55.3% |
 | 只读工具并行执行 | `1.06s -> 0.22s`，加速 4.88x，延迟下降 79.5% |
 | RAG 文档规模 | 954 个文档 / 4080 个 chunks |
 | RAG R@1 | `83.33% -> 91.67%` |
 | RAG MRR | `0.882 -> 0.938` |
-| 默认 top_k=3 R@3 | 95.83% |
+| 默认 `top_k=3` R@3 | 95.83% |
 
 说明：
 
-- Token 数据来自真实 DashScope / OpenAI-compatible `usage` 返回。
+- Token 数据来自真实模型服务返回的 `usage` 字段。
 - 并行工具数据来自 5 个独立只读工具的受控基准测试。
 - RAG 数据来自 24 题黄金集和 954 文档规模的离线评估。
-- Hybrid Search 在当前语料下虽然能提升 R@3/R@5，但 R@1 会下降，因此默认仍采用纯向量 `top_k=3`。
+- 混合检索在当前语料下虽然能提升 R@3/R@5，但 R@1 会下降，因此默认仍采用纯向量 `top_k=3`。
 
-当前工作树还保留了补充核对文档：
+## 文档索引
 
 | 文档 | 内容 |
 |---|---|
-| `docs/portfolio/facts.md` | 本地环境、Skill、RAG/Search 配置、MCP 端口与知识库 dry-run 结果 |
-| `docs/portfolio/benchmark_local.md` | 本地 benchmark/eval 可复现性检查记录 |
+| `docs/portfolio/facts.md` | 本地环境、Skill、RAG/Search 配置、MCP 端口与知识库检查结果 |
+| `docs/portfolio/benchmark_local.md` | 本地基准测试与评估可复现性检查记录 |
 | `docs/portfolio/dep_audit.md` | Python 与 Node 依赖审计记录 |
 | `docs/portfolio/sse_contract.md` | AIOps SSE 事件契约 |
-| `docs/portfolio/smoke_check.md` | 演示前只读 smoke check 说明 |
+| `docs/portfolio/smoke_check.md` | 演示前只读检查说明 |
 | `docs/portfolio/agentops_architecture.md` | AgentOps / EvalOps 增量架构与边界 |
-| `docs/portfolio/eval_report.md` | EvalOps 离线评估运行报告、样本数量、指标和限制 |
-| `docs/portfolio/v5_upgrade_summary.md` | V5 分阶段升级总结、验证和限制 |
-| `docs/portfolio/codex_workflow.md` | Codex 辅助开发流程与人工验证边界 |
-| `docs/portfolio/ownership.md` | 上游来源、第三方资产和本地增强边界 |
+| `docs/portfolio/release_notes.md` | 版本更新、前端重构、AgentOps / EvalOps、验证、演示与来源说明 |
 
 ## 项目结构
 
@@ -423,22 +346,23 @@ X-KB-Admin-Token: your-admin-token
 multi-rag-agent/
 ├── app/                    # FastAPI / Agent / RAG / Skill 核心代码
 │   ├── agents/             # LangGraph 节点与 Agent 流程
-│   ├── api/                # FastAPI API 路由
-│   ├── core/               # LLM、Embedding、Milvus、RAG、联网搜索
-│   ├── runtime/            # Harness、权限、工具过滤、并行工具执行
+│   ├── api/                # 接口路由
+│   ├── core/               # 模型、Embedding、Milvus、RAG、联网搜索、缓存和指标
+│   ├── runtime/            # 运行时控制、权限、工具过滤和并行工具执行
 │   ├── services/           # AIOps、RAG Chat、文档服务
 │   └── skills/             # Skill 定义、加载和注册
 ├── mcp_servers/            # MCP 工具服务
-├── frontend/               # 前端页面
+├── frontend/               # 前端控制台
+│   ├── js/                 # 核心工具和业务模块
+│   └── styles/             # 样式令牌、基础样式和组件样式
 ├── docs/sop/               # 内置 OnCall SOP
-├── docs/portfolio/         # 本地事实、架构、SSE、验证和演示文档
+├── docs/portfolio/         # 本地事实、架构、SSE、验证和版本说明
 ├── data/kb_corpus/         # RAG 知识库语料
 ├── scripts/                # 知识库、语料转换、告警模拟和验证脚本
-├── open-webSearch-main/    # 本地联网搜索 daemon
+├── open-webSearch-main/    # 本地联网搜索服务
 ├── docker-compose.yml      # Milvus + etcd + MinIO + Attu + Redis + open-webSearch
 ├── requirements.txt
 ├── .env.example
-├── .gitignore
 └── run.ps1                 # Windows 一键启动脚本
 ```
 
@@ -446,9 +370,9 @@ multi-rag-agent/
 
 本项目代码按 **MIT License** 口径维护。仓库中集成或参考的第三方开源资产请遵守各自许可和署名要求：
 
-- **Aas-ee/open-webSearch**：本地联网搜索 daemon，仓库副本位于 `open-webSearch-main/`，其本地 license 文件为 Apache License 2.0。
+- **Aas-ee/open-webSearch**：本地联网搜索服务，仓库副本位于 `open-webSearch-main/`，其本地许可证文件为 Apache License 2.0。
 - **samber/awesome-prometheus-alerts**：Prometheus 告警语料来源，仓库副本位于 `data/kb_corpus/awesome-prometheus-alerts/`，原始内容遵循 CC BY 4.0。
-- **Kkkirito-123/mutil-rag-agent**：本仓库早期工程基础参考来源之一；相关归属边界可参考 `docs/portfolio/ownership.md`。
+- **Kkkirito-123/mutil-rag-agent**：本仓库早期工程基础参考来源之一；相关来源说明可参考 `docs/portfolio/release_notes.md`。
 - **小林 OnCall Agent 项目**：OnCall Agent 场景、诊断流程和表达方式的参考来源之一。
 
 公开发布、二次分发或用于展示时，请保留必要的第三方署名、许可文件和来源说明。

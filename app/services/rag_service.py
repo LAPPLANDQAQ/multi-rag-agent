@@ -75,6 +75,39 @@ def _supports_thinking(model_name: str) -> bool:
     return any(tag in name for tag in ("qwen3", "qwen-plus", "qwen-max-latest", "qwq", "qvq"))
 
 
+def _build_llm_degraded_answer(
+    *,
+    stage: str,
+    exc: BaseException,
+    hits: int,
+    sources: list[str],
+    web_sources: list[str],
+) -> tuple[str, dict[str, Any]]:
+    harness = get_agent_harness()
+    error_kind = harness.classify_error(exc)
+    error_type = type(exc).__name__
+    source_names = list(dict.fromkeys([*(sources or []), *(web_sources or [])]))[:5]
+    source_line = ", ".join(source_names) if source_names else "无可用来源"
+    text = (
+        "模型调用失败，已返回降级说明，避免检索流程中断。\n\n"
+        f"- 失败阶段: {stage}\n"
+        f"- 错误类型: {error_type}\n"
+        f"- 错误分类: {error_kind}\n"
+        f"- 知识库命中数: {hits}\n"
+        f"- 可用来源: {source_line}\n\n"
+        "当前无法生成模型总结。请检查模型服务、API Key、账户额度或本地模型兜底配置后重试。"
+    )
+    return text, {
+        "degraded": True,
+        "stage": stage,
+        "error_kind": error_kind,
+        "error_type": error_type,
+        "error": f"{error_type}: {exc}"[:500],
+        "sources": source_names,
+        "hits": hits,
+    }
+
+
 async def stream_chat(
     question: str,
     *,
@@ -356,8 +389,23 @@ async def stream_chat(
                 result = await runner_task
             except Exception as exc:
                 logger.exception(f"[rag] tool runner 异常: {exc}")
-                yield {"type": "error", "message": f"工具回合失败: {type(exc).__name__}: {exc}"}
-                return
+                fallback_answer, fallback_data = _build_llm_degraded_answer(
+                    stage="tool_runner",
+                    exc=exc,
+                    hits=hits,
+                    sources=sources,
+                    web_sources=web_sources,
+                )
+                full_answer = fallback_answer
+                yield progress(
+                    "llm_degraded",
+                    "模型调用失败，已返回降级说明",
+                    fallback_data["error_type"],
+                    mark_start=True,
+                    data=fallback_data,
+                )
+                yield {"type": "token", "content": fallback_answer}
+                result = {"messages": []}
 
             # 流式 fallback (run_parallel_agent 内部 astream 抛错回退到 ainvoke) 时,
             # step_token 没 emit, 但最终 AIMessage.content 完整, 一次性补一段 token.
@@ -378,8 +426,22 @@ async def stream_chat(
             logger.exception(f"[rag] 工具回合主循环异常: {exc}")
             if not runner_task.done():
                 runner_task.cancel()
-            yield {"type": "error", "message": f"工具回合失败: {type(exc).__name__}: {exc}"}
-            return
+            fallback_answer, fallback_data = _build_llm_degraded_answer(
+                stage="tool_stream",
+                exc=exc,
+                hits=hits,
+                sources=sources,
+                web_sources=web_sources,
+            )
+            full_answer = fallback_answer
+            yield progress(
+                "llm_degraded",
+                "模型调用失败，已返回降级说明",
+                fallback_data["error_type"],
+                mark_start=True,
+                data=fallback_data,
+            )
+            yield {"type": "token", "content": fallback_answer}
 
         if total_tokens == 0:
             total_tokens = input_tokens + output_tokens
@@ -409,8 +471,22 @@ async def stream_chat(
                 total_tokens = input_tokens + output_tokens
         except Exception as e:
             logger.exception(f"[rag] LLM 调用失败: {e}")
-            yield {"type": "error", "message": f"LLM 调用失败: {type(e).__name__}: {e}"}
-            return
+            fallback_answer, fallback_data = _build_llm_degraded_answer(
+                stage="llm_stream",
+                exc=e,
+                hits=hits,
+                sources=sources,
+                web_sources=web_sources,
+            )
+            full_answer = fallback_answer
+            yield progress(
+                "llm_degraded",
+                "模型调用失败，已返回降级说明",
+                fallback_data["error_type"],
+                mark_start=True,
+                data=fallback_data,
+            )
+            yield {"type": "token", "content": fallback_answer}
 
     # ---------- 收尾: 写 memory + 输出 stats ----------
     try:

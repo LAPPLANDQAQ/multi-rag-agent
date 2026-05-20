@@ -1,0 +1,45 @@
+/* Claude 水墨风设计 token */
+:root {
+    /* 底色 / 表面 */
+    --ink-bg: #FAF9F5;
+    --ink-bg-soft: #F4F1EA;
+    --ink-surface: #FFFFFF;
+    --ink-surface-2: #FBFAF6;
+    --ink-border: #E8E4D8;
+    --ink-border-strong: #D6D0BE;
+
+    /* 文字 */
+    --ink-text: #3D3929;
+    --ink-text-strong: #1F1C12;
+    --ink-muted: #8B7355;
+    --ink-faint: #B6AC93;
+
+    /* 主色 - Claude 陶土橙 */
+    --ink-accent: #C96442;
+    --ink-accent-strong: #A84A2A;
+    --ink-accent-soft: #F3E6DE;
+
+    /* 语义色 (取沉稳的非荧光版) */
+    --ink-success: #6B8268;
+    --ink-success-soft: #E5ECDE;
+    --ink-warn: #B8860B;
+    --ink-warn-soft: #F5ECD2;
+    --ink-error: #A0413E;
+    --ink-error-soft: #F2DDDC;
+    --ink-info: #4E6B7E;
+    --ink-info-soft: #DCE6EC;
+
+    /* 形状 */
+    --radius-card: 12px;
+    --radius-btn: 6px;
+    --radius-pill: 999px;
+
+    /* 阴影 */
+    --ink-shadow: 0 1px 3px rgba(61, 57, 41, 0.06), 0 1px 2px rgba(61, 57, 41, 0.04);
+    --ink-shadow-md: 0 4px 12px rgba(61, 57, 41, 0.08), 0 2px 4px rgba(61, 57, 41, 0.04);
+
+    /* 字体 */
+    --font-serif: "Tiempos Headline", "Source Serif Pro", "Songti SC", "STSong", "SimSun", serif;
+    --font-sans: "Inter", "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-mono: "SFMono-Regular", "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+}

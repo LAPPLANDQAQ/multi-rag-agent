@@ -27,7 +27,7 @@ from app.agentops.service import agentops_service
 
 
 DEFAULT_FIXTURES_DIR = REPO_ROOT / "frontend" / "demo_fixtures"
-DEFAULT_REPORT_PATH = REPO_ROOT / "docs" / "portfolio" / "eval_report.md"
+DEFAULT_REPORT_PATH = REPO_ROOT / "docs" / "portfolio" / "evaluation_report.md"
 
 
 def parse_args() -> argparse.Namespace:

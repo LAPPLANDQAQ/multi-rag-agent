@@ -44,7 +44,7 @@ Commands were run with sanitized output. Secret-like matches were reported by fi
 - `OPENAI_API_KEY` strict history scan returned no hits.
 - `.env` patch history sensitive-pattern scan returned zero hits.
 
-If any real key was ever copied into a prompt, terminal, screenshot, or external service outside this repository, rotate it from the provider console.
+If any real key was ever copied into external input, terminal, screenshot, or an outside service, rotate it from the provider console.
 
 ### Tracked Files
 
@@ -56,8 +56,8 @@ If any real key was ever copied into a prompt, terminal, screenshot, or external
 
 - `logs/` contains local runtime logs and is ignored by Git.
 - Sanitized scan found the word `token` in logs and public corpus files, but no strict `sk-...`, API-key assignment, password, private-key marker, or URL-with-credentials hit was reported.
-- Do not upload or screenshot `logs/` without a fresh review. Logs can contain local paths, timing, prompts, or future tool outputs.
-- `frontend/demo_fixtures/README.md` is safe documentation. Captured replay JSON files are ignored because they may contain real tool output or prompts.
+- Do not upload or screenshot `logs/` without a fresh review. Logs can contain local paths, timing, user inputs, or future tool outputs.
+- `frontend/demo_fixtures/README.md` is safe documentation. Captured replay JSON files are ignored because they may contain real tool output or user inputs.
 
 ## Ignore Rule Updates
 

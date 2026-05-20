@@ -1,12 +1,12 @@
 # Portfolio Architecture Notes
 
 Collection time: 2026-05-17T22:20+08:00  
-Evidence base: local code inspection plus `docs/portfolio/facts.md`, `ownership.md`, and `sse_contract.md`  
+Evidence base: local code inspection plus `docs/portfolio/facts.md`, `release_notes.md`, and `sse_contract.md`
 Git commit baseline: `801c7453c19f5e6f6793d1e17df69193b1772acd`
 
 ## Scope And Attribution
 
-This document explains the local repository architecture for interview discussion. It does not claim ownership of upstream architecture. Ownership boundaries are defined in `docs/portfolio/ownership.md`.
+This document explains the local repository architecture for interview discussion. It does not claim exclusive authorship of upstream architecture. Source and attribution notes are summarized in `docs/portfolio/release_notes.md`.
 
 Safe phrasing:
 - "I analyzed, documented, packaged, and verified the existing Skill-first AIOps/RAG system."
@@ -83,7 +83,7 @@ START
 
 The graph also has a `fork_skill` node for Skills that declare fork-style context. Phase C does not modify this topology.
 
-`AgentHarness` centralizes prompts, model selection, reroute limits, fast-path replanner decisions, budget/stat events, and fallback text. It is treated as upstream V2 baseline in `ownership.md`.
+`AgentHarness` centralizes context assembly, model selection, reroute limits, fast-path replanner decisions, budget/stat events, and fallback text. It is treated as part of the existing runtime control plane; source notes are summarized in `release_notes.md`.
 
 ## Skill-First Routing
 
@@ -196,7 +196,7 @@ The schema file and runtime stream have some drift: runtime code emits more even
 
 ## Risk Boundaries
 
-Hard boundaries from the phase prompt:
+Hard integration boundaries:
 - Do not rewrite the LangGraph main topology.
 - Do not rewrite `app/runtime/agent_harness.py`.
 - Do not rewrite the tool registry or permission model.
@@ -222,4 +222,4 @@ The system is designed to degrade rather than fabricate:
 
 The strongest honest narrative is:
 
-"I took an existing open-source Multi-Agent AIOps/RAG system and made it interview-ready by auditing facts, clarifying ownership, documenting the SSE contract, checking dependency health, and replacing unsupported metric claims with documented local evidence and explicit gaps. I can walk through how the Skill-first LangGraph flow works, how MCP tools are gated, and where the demo is read-only versus risky."
+"I took an existing open-source Multi-Agent AIOps/RAG system and made it interview-ready by auditing facts, clarifying source boundaries, documenting the SSE contract, checking dependency health, and replacing unsupported metric claims with documented local evidence and explicit gaps. I can walk through how the Skill-first LangGraph flow works, how MCP tools are gated, and where the demo is read-only versus risky."

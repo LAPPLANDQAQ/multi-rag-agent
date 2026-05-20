@@ -731,7 +731,17 @@ class AgentHarness:
             return "transient"
         if "tool" in text and ("argument" in text or "schema" in text or "validation" in text):
             return "llm_recoverable"
-        if "api key" in text or "unauthorized" in text or "401" in text or "permission" in text:
+        if (
+            "api key" in text
+            or "unauthorized" in text
+            or "401" in text
+            or "permission" in text
+            or "arrearage" in text
+            or "overdue" in text
+            or "payment" in text
+            or "good standing" in text
+            or "access denied" in text
+        ):
             return "user_fixable"
         if "mcp" in text or "milvus" in text or "connection refused" in text:
             return "tool_unavailable"

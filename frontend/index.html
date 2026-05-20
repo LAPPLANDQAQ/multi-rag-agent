@@ -1,380 +1,375 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Agent AIOps Platform</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="/styles.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi-Agent AIOps</title>
+<link rel="stylesheet" href="/styles/tokens.css">
+<link rel="stylesheet" href="/styles/base.css">
+<link rel="stylesheet" href="/styles/components.css">
 </head>
-<body class="bg-slate-100 min-h-screen text-slate-800">
+<body>
 
-<!-- Header -->
-<header class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg">
-    <div class="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
-        <div>
-            <h1 class="text-2xl font-bold tracking-tight">Multi-Agent AIOps Platform</h1>
-            <p class="text-indigo-100 text-sm">企业级智能运维诊断 · LangGraph + RAG + MCP</p>
-        </div>
-        <div class="flex items-center space-x-3">
-            <span id="health-dot" class="w-3 h-3 rounded-full bg-yellow-400"></span>
-            <span id="health-text" class="text-sm font-mono">检查中...</span>
-        </div>
+<!-- ============================= Header ============================= -->
+<header class="ink-header">
+  <div class="ink-header-inner">
+    <div class="ink-brand">
+      <h1>Multi-Agent AIOps</h1>
+      <p>告警诊断 · RAG 知识库 · Agent 编排</p>
     </div>
+    <div class="ink-health" id="health">
+      <span class="ink-health-dot" id="health-dot"></span>
+      <span id="health-text">检测中...</span>
+    </div>
+  </div>
 </header>
 
-<!-- Tabs -->
-<div class="max-w-7xl mx-auto px-6 mt-6">
-    <div class="bg-white rounded-t-xl shadow-sm border-b">
-        <nav class="flex space-x-1 px-2 pt-2">
-            <button data-tab="aiops"     class="tab-btn tab-active">🔍 AIOps 诊断</button>
-            <button data-tab="chat"      class="tab-btn">💬 RAG 聊天</button>
-            <button data-tab="documents" class="tab-btn">📚 知识库</button>
-            <button data-tab="agentops"  class="tab-btn">AgentOps</button>
-        </nav>
+<!-- ============================= 主导航 ============================= -->
+<nav class="ink-shell">
+  <div class="ink-nav">
+    <button class="tab-btn tab-active" data-tab="aiops">AIOps 诊断</button>
+    <button class="tab-btn" data-tab="chat">RAG 聊天</button>
+    <button class="tab-btn" data-tab="documents">知识库</button>
+    <button class="tab-btn" data-tab="agentops">AgentOps 控制台</button>
+    <span class="ink-nav-divider"></span>
+    <span class="ink-nav-group-label">观测</span>
+    <button class="tab-btn" data-tab="metrics">指标</button>
+    <button class="tab-btn" data-tab="webhook">告警</button>
+  </div>
+
+  <!-- ===================== AIOps 诊断 Tab ===================== -->
+  <section class="tab-pane" id="tab-aiops">
+
+    <!-- Skill 折叠区 -->
+    <div class="ink-collapse" id="skill-collapse">
+      <div class="ink-collapse-head">
+        <span>Skill 库 (Playbook)</span>
+        <span>
+          <span id="skill-count">· 0 个</span>
+          <span class="ink-caret" style="margin-left:8px">▼</span>
+        </span>
+      </div>
+      <div class="ink-collapse-body">
+        <div class="skill-grid" id="skill-list">
+          <span class="ink-empty" style="grid-column:1/-1">加载中...</span>
+        </div>
+      </div>
     </div>
-    <div class="bg-white rounded-b-xl shadow-md p-6 min-h-[600px]">
 
-        <!-- ====================== AIOps Tab ====================== -->
-        <section id="tab-aiops" class="tab-pane">
-
-            <!-- Skill 总览面板 (诊断中会高亮选中的 Skill) -->
-            <div class="mb-5 bg-gradient-to-br from-slate-50 to-indigo-50 border rounded-lg p-4">
-                <div class="flex items-center justify-between mb-3">
-                    <h3 class="text-sm font-semibold text-slate-700 flex items-center">
-                        <span class="mr-1">🎯</span> Skill 库 (Playbook)
-                        <span id="skill-count" class="ml-2 text-xs font-normal text-slate-500"></span>
-                    </h3>
-                    <div id="skill-selected-banner" class="hidden text-xs bg-indigo-600 text-white px-3 py-1 rounded-full">
-                        <span class="opacity-80">本次诊断:</span>
-                        <span id="skill-selected-name" class="font-semibold"></span>
-                    </div>
-                </div>
-                <div id="skill-list" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2 text-xs">
-                    <span class="text-slate-400 italic col-span-full">加载中...</span>
-                </div>
-                <div id="skill-reason" class="hidden mt-2 text-xs text-slate-600 italic"></div>
-            </div>
-
-            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 aiops-grid">
-                <!-- 左侧: 输入 + 计划 + 步骤 -->
-                <div class="xl:col-span-1 flex flex-col min-h-0 space-y-3">
-                    <div>
-                        <label class="block text-sm font-semibold mb-2">告警内容 / 故障描述</label>
-                        <textarea id="aiops-query" rows="3"
-                            class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm font-mono"
-                            placeholder="例如: 我的电脑内存占用居高不下, 系统开始卡顿...">我的电脑内存占用居高不下, 系统明显卡顿, 浏览器和开发工具响应变慢, 已持续 12 分钟</textarea>
-                        <div class="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2">
-                            <button type="button" class="demo-prompt-btn" data-demo-prompt="local-resource">
-                                Local resource
-                            </button>
-                            <button type="button" class="demo-prompt-btn" data-demo-prompt="docker-container">
-                                Docker container
-                            </button>
-                            <button type="button" class="demo-prompt-btn" data-demo-prompt="network-timeout">
-                                Network timeout
-                            </button>
-                        </div>
-                    </div>
-                    <div class="flex space-x-2">
-                        <button id="aiops-start" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 rounded-lg transition">
-                            🚀 开始诊断
-                        </button>
-                        <button id="aiops-stop" class="px-4 bg-slate-200 hover:bg-slate-300 rounded-lg text-sm" disabled>
-                            停止
-                        </button>
-                    </div>
-                    <div id="offline-demo-panel" class="border border-amber-200 bg-amber-50 rounded-lg p-3 text-xs text-amber-900 space-y-2">
-                        <div class="flex flex-wrap items-center gap-2">
-                            <label class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-white border border-amber-200 text-amber-800 font-semibold">
-                                <input id="aiops-record-stream" type="checkbox" class="accent-amber-600">
-                                <span>Record stream</span>
-                            </label>
-                            <button id="offline-demo-toggle" type="button"
-                                class="px-3 py-1.5 rounded-md border border-amber-300 bg-white text-amber-800 font-semibold hover:bg-amber-100 transition">
-                                Offline Demo Replay
-                            </button>
-                            <select id="offline-fixture-select"
-                                class="min-w-[180px] px-2 py-1.5 rounded-md border border-amber-300 bg-white text-amber-900 disabled:opacity-50"
-                                disabled>
-                                <option value="">No recorded fixture</option>
-                            </select>
-                            <select id="offline-replay-speed"
-                                class="px-2 py-1.5 rounded-md border border-amber-300 bg-white text-amber-900">
-                                <option value="1">1x</option>
-                                <option value="2">2x</option>
-                                <option value="4">4x</option>
-                                <option value="instant">instant</option>
-                            </select>
-                            <button id="offline-replay-start" type="button"
-                                class="px-3 py-1.5 rounded-md bg-amber-600 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-amber-700 transition"
-                                disabled>
-                                播放录制流
-                            </button>
-                            <button id="aiops-download-fixture" type="button"
-                                class="px-3 py-1.5 rounded-md border border-amber-300 bg-white text-amber-800 font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-amber-100 transition"
-                                disabled>
-                                Download fixture JSON
-                            </button>
-                            <span id="offline-replay-status" class="text-amber-700">检查录制 fixture...</span>
-                        </div>
-                        <div id="aiops-record-status" class="text-amber-700">
-                            Enable Record stream before a live diagnosis to capture a real SSE fixture.
-                        </div>
-                        <div id="offline-demo-banner" class="hidden rounded-md border border-amber-300 bg-white px-3 py-2 text-amber-800">
-                            Offline recorded demo — recorded at unavailable. Not a live model/tool call.
-                        </div>
-                    </div>
-
-                    <div class="shrink-0">
-                        <h3 class="text-sm font-semibold mb-1 text-slate-600">📋 诊断计划</h3>
-                        <div id="aiops-plan" class="bg-slate-50 border rounded-lg p-3 text-sm space-y-1 max-h-[160px] overflow-y-auto">
-                            <span class="text-slate-400 italic">点击"开始诊断"生成计划...</span>
-                        </div>
-                    </div>
-
-                    <div class="flex flex-col min-h-0 flex-1">
-                        <h3 class="text-sm font-semibold mb-1 text-slate-600 shrink-0">⚡ 执行步骤</h3>
-                        <div id="aiops-steps" class="bg-slate-50 border rounded-lg p-3 text-sm space-y-2 flex-1 min-h-0 overflow-y-auto scroll-smooth">
-                            <span class="text-slate-400 italic">等待开始...</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 右侧: 实时监控 / 最终报告 -->
-                <div class="col-span-2 flex flex-col min-h-0">
-                    <h3 class="text-sm font-semibold mb-2 text-slate-600 flex items-center justify-between shrink-0">
-                        <span id="aiops-right-title">� 诊断监控</span>
-                        <span id="aiops-status" class="text-xs font-normal text-slate-400">未开始</span>
-                    </h3>
-
-                    <!-- 监控面板: 报告到达前显示; 诊断结束后被 report 替换 -->
-                    <div id="aiops-monitor" class="flex flex-col flex-1 min-h-0 border rounded-lg bg-white p-4 space-y-3 overflow-hidden">
-                        <!-- 指标卡 -->
-                        <div class="grid grid-cols-4 gap-3 shrink-0">
-                            <div class="bg-indigo-50 border border-indigo-100 rounded-lg p-3">
-                                <div class="text-[10px] uppercase tracking-wider text-indigo-500">当前步骤</div>
-                                <div id="mon-step" class="text-xl font-semibold text-indigo-700 mt-0.5">—</div>
-                                <div id="mon-step-label" class="text-[11px] text-indigo-400 truncate">等待启动</div>
-                            </div>
-                            <div class="bg-emerald-50 border border-emerald-100 rounded-lg p-3">
-                                <div class="text-[10px] uppercase tracking-wider text-emerald-600">耗时</div>
-                                <div id="mon-elapsed" class="text-xl font-semibold text-emerald-700 mt-0.5">0.0s</div>
-                                <div class="text-[11px] text-emerald-500">自诊断开始</div>
-                            </div>
-                            <div class="bg-amber-50 border border-amber-100 rounded-lg p-3">
-                                <div class="text-[10px] uppercase tracking-wider text-amber-600">工具调用</div>
-                                <div id="mon-tools" class="text-xl font-semibold text-amber-700 mt-0.5">0</div>
-                                <div id="mon-tools-fail" class="text-[11px] text-amber-500">失败 0</div>
-                            </div>
-                            <div class="bg-slate-100 border border-slate-200 rounded-lg p-3">
-                                <div class="text-[10px] uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                                    <span>真实 Tokens</span>
-                                    <span id="mon-tokens-badge" class="text-[9px] text-slate-400 normal-case font-normal">~估算</span>
-                                </div>
-                                <div id="mon-tokens" class="text-xl font-semibold text-slate-700 mt-0.5">0</div>
-                                <div id="mon-tokens-detail" class="text-[11px] text-slate-500 truncate" title="">输入 0 · 输出 0</div>
-                            </div>
-                        </div>
-
-                        <!-- 两栏: 左 实时输出, 右 工具流水 -->
-                        <div class="grid grid-cols-5 gap-3 flex-1 min-h-0">
-                            <div class="col-span-3 flex flex-col min-h-0 border rounded-lg bg-slate-50">
-                                <div class="px-3 py-2 text-xs font-semibold text-slate-600 border-b bg-white rounded-t-lg shrink-0 flex justify-between">
-                                    <span>🧠 Executor 实时输出</span>
-                                    <span id="mon-stream-hint" class="text-slate-400 font-normal">等待中</span>
-                                </div>
-                                <div id="mon-stream" class="flex-1 min-h-0 overflow-y-auto p-3 text-xs text-slate-700 whitespace-pre-wrap break-words font-mono leading-relaxed">
-                                    <span class="text-slate-400 italic">诊断开始后, 模型生成的文本会实时显示在此...</span>
-                                </div>
-                            </div>
-                            <div class="col-span-2 flex flex-col min-h-0 border rounded-lg bg-slate-50">
-                                <div class="px-3 py-2 text-xs font-semibold text-slate-600 border-b bg-white rounded-t-lg shrink-0">
-                                    🛠️ 工具调用流水
-                                </div>
-                                <div id="mon-tool-feed" class="flex-1 min-h-0 overflow-y-auto p-2 space-y-1 text-xs">
-                                    <span class="text-slate-400 italic px-2">暂无工具调用</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 报告: 默认隐藏, 诊断结束时显示 -->
-                    <div id="aiops-report-actions" class="hidden shrink-0 mb-2 flex items-center justify-end gap-2">
-                        <button id="aiops-export-markdown" type="button" class="export-md-btn" disabled
-                            title="Download the displayed diagnosis report as Markdown">
-                            Export Markdown
-                        </button>
-                    </div>
-                    <div id="aiops-report" class="prose prose-sm max-w-none border rounded-lg p-5 bg-white flex-1 min-h-0 overflow-y-auto hidden"></div>
-                </div>
-            </div>
-        </section>
-
-        <!-- ====================== Chat Tab ====================== -->
-        <section id="tab-chat" class="tab-pane hidden">
-            <div class="max-w-3xl mx-auto">
-                <div id="chat-messages" class="space-y-4 mb-4 min-h-[400px] max-h-[500px] overflow-y-auto p-3 bg-slate-50 rounded-lg border">
-                    <div class="text-center text-slate-400 italic text-sm">基于知识库回答你的运维问题</div>
-                </div>
-                <div class="flex items-center space-x-2">
-                    <input id="chat-input" type="text"
-                        class="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 text-sm"
-                        placeholder="例如: 我的电脑内存占用居高不下" />
-                    <button id="chat-web-toggle" type="button"
-                        title="启用后会把外网搜索结果作为回答的补充资料"
-                        class="px-3 py-2 rounded-lg border text-xs font-medium select-none transition
-                               border-slate-300 text-slate-500 hover:bg-slate-100">
-                        🌐 联网 <span id="chat-web-state">关</span>
-                    </button>
-                    <button id="chat-mcp-toggle" type="button"
-                        title="启用后允许 RAG Chat 调用 MCP 只读工具查询本机/容器/网络状态"
-                        class="px-3 py-2 rounded-lg border text-xs font-medium select-none transition
-                               border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100">
-                        🛠 MCP <span id="chat-mcp-state">开</span>
-                    </button>
-                    <button id="chat-send" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 rounded-lg font-semibold">
-                        发送
-                    </button>
-                </div>
-                <div class="text-[11px] text-slate-400 mt-1">联网默认调用本地 open-webSearch daemon, 无需搜索 API Key；未启动时会降级提示.</div>
-            </div>
-        </section>
-
-        <!-- ====================== Documents Tab ====================== -->
-        <section id="tab-documents" class="tab-pane hidden">
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div>
-                    <h3 class="text-sm font-semibold mb-2 text-slate-600">📤 上传文档</h3>
-                    <div id="upload-zone" class="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:bg-slate-50 cursor-pointer transition">
-                        <input type="file" id="upload-input" accept=".md,.markdown,.txt" class="hidden">
-                        <div class="text-4xl mb-2">📁</div>
-                        <div class="text-sm text-slate-600">点击或拖拽 .md/.txt 文件到此</div>
-                        <div class="text-xs text-slate-400 mt-1">将自动按章节切分并建立向量索引</div>
-                    </div>
-                    <div id="upload-result" class="mt-3 text-sm"></div>
-                </div>
-                <div>
-                    <h3 class="text-sm font-semibold mb-2 text-slate-600 flex items-center justify-between">
-                        <span>📚 已索引文档</span>
-                        <button id="docs-refresh" class="text-xs text-indigo-600 hover:underline">🔄 刷新</button>
-                    </h3>
-                    <div id="docs-list" class="space-y-2 max-h-[400px] overflow-y-auto">
-                        <span class="text-sm text-slate-400 italic">加载中...</span>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- ====================== AgentOps Tab ====================== -->
-        <section id="tab-agentops" class="tab-pane hidden">
-            <div class="space-y-6">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                    <div>
-                        <h2 class="text-xl font-bold text-slate-800">AgentOps Console</h2>
-                        <p class="text-sm text-slate-500">Run persistence, scenarios, evals, and recorded offline demos.</p>
-                    </div>
-                    <button id="agentops-refresh" type="button"
-                        class="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition">
-                        Refresh
-                    </button>
-                </div>
-
-                <div id="agentops-warning" class="hidden rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"></div>
-
-                <section class="agentops-panel">
-                    <div class="agentops-panel-head">
-                        <h3>Overview</h3>
-                        <span class="agentops-muted">GET /api/v1/agentops/summary</span>
-                    </div>
-                    <div id="agentops-summary-grid" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3"></div>
-                </section>
-
-                <section class="agentops-panel">
-                    <div class="agentops-panel-head">
-                        <h3>Run History</h3>
-                        <span class="agentops-muted">Latest 20 persisted diagnosis runs</span>
-                    </div>
-                    <div id="agentops-runs-list" class="agentops-table-wrap"></div>
-                    <div id="agentops-run-report" class="hidden mt-4 prose prose-sm max-w-none border rounded-lg bg-white p-4"></div>
-                </section>
-
-                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                    <section class="agentops-panel">
-                        <div class="agentops-panel-head">
-                            <h3>Demo Scenarios</h3>
-                            <span class="agentops-muted">Fill AIOps input only; never auto-send</span>
-                        </div>
-                        <form id="agentops-scenario-form" class="agentops-form-grid mb-4">
-                            <input name="id" class="agentops-input" placeholder="scenario id" required>
-                            <input name="title" class="agentops-input" placeholder="title" required>
-                            <input name="expected_skill" class="agentops-input" placeholder="expected_skill hint">
-                            <input name="tags" class="agentops-input" placeholder="tags, comma separated">
-                            <textarea name="input_text" class="agentops-input xl:col-span-2" rows="3" placeholder="scenario input" required></textarea>
-                            <textarea name="description" class="agentops-input xl:col-span-2" rows="2" placeholder="description"></textarea>
-                            <label class="agentops-check">
-                                <input name="is_builtin" type="checkbox" class="accent-indigo-600">
-                                <span>builtin</span>
-                            </label>
-                            <div class="agentops-form-actions">
-                                <button type="button" id="agentops-scenario-reset" class="agentops-secondary-btn">Clear</button>
-                                <button type="submit" class="agentops-primary-btn">Save scenario</button>
-                            </div>
-                        </form>
-                        <div id="agentops-scenarios-list" class="space-y-2"></div>
-                    </section>
-
-                    <section class="agentops-panel">
-                        <div class="agentops-panel-head">
-                            <h3>Eval Cases</h3>
-                            <span class="agentops-muted">CRUD plus enable/disable</span>
-                        </div>
-                        <form id="agentops-eval-case-form" class="agentops-form-grid mb-4">
-                            <input name="id" class="agentops-input" placeholder="eval case id" required>
-                            <input name="name" class="agentops-input" placeholder="name" required>
-                            <input name="expected_skill" class="agentops-input" placeholder="expected_skill">
-                            <input name="tags" class="agentops-input" placeholder="tags, comma separated">
-                            <input name="expected_tools" class="agentops-input xl:col-span-2" placeholder="expected tools, comma separated">
-                            <textarea name="input_text" class="agentops-input xl:col-span-2" rows="3" placeholder="eval input" required></textarea>
-                            <label class="agentops-check">
-                                <input name="enabled" type="checkbox" class="accent-indigo-600" checked>
-                                <span>enabled</span>
-                            </label>
-                            <div class="agentops-form-actions">
-                                <button type="button" id="agentops-eval-case-reset" class="agentops-secondary-btn">Clear</button>
-                                <button type="submit" class="agentops-primary-btn">Save eval case</button>
-                            </div>
-                        </form>
-                        <div id="agentops-eval-cases-list" class="space-y-2"></div>
-                    </section>
-                </div>
-
-                <section class="agentops-panel">
-                    <div class="agentops-panel-head">
-                        <h3>Eval Results</h3>
-                        <span class="agentops-muted">Latest 20 offline/live eval outcomes</span>
-                    </div>
-                    <div id="agentops-eval-results-list" class="agentops-table-wrap"></div>
-                </section>
-
-                <section class="agentops-panel border-amber-200 bg-amber-50">
-                    <div class="agentops-panel-head">
-                        <h3>Offline Fixtures</h3>
-                        <span class="agentops-muted">Offline recorded demo - not a live model/tool call</span>
-                    </div>
-                    <div id="agentops-fixtures-list" class="space-y-2 text-sm"></div>
-                </section>
-            </div>
-        </section>
-
+    <!-- Skill 选中 banner -->
+    <div class="ink-panel hidden" id="skill-selected-banner" style="margin-top:10px;padding:8px 14px;background:var(--ink-accent-soft);border-color:rgba(201,100,66,0.3)">
+      <span style="font-weight:600;color:var(--ink-accent-strong)">选中 Skill:</span>
+      <span id="skill-selected-name" style="margin-left:6px">—</span>
+      <span id="skill-reason" class="hidden" style="margin-left:6px;color:var(--ink-muted);font-size:12px"></span>
     </div>
-</div>
 
-<footer class="text-center text-xs text-slate-400 py-6">
-    Multi-Agent AIOps · LangChain v1.x · 2026
+    <!-- 输入区 -->
+    <div class="ink-panel" style="margin-top:12px">
+      <div class="ink-panel-body">
+        <textarea id="aiops-query" class="ink-textarea" rows="3" placeholder="输入告警描述, 或从下方 Demo 场景快速填充..."></textarea>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
+          <button id="aiops-start" class="ink-btn ink-btn-primary">开始诊断</button>
+          <button id="aiops-stop" class="ink-btn ink-btn-danger" disabled>停止</button>
+          <span style="font-size:12px;color:var(--ink-muted)">Demo:</span>
+          <button class="demo-prompt-btn" data-demo-prompt="local-resource">本地资源</button>
+          <button class="demo-prompt-btn" data-demo-prompt="docker-container">Docker 容器</button>
+          <button class="demo-prompt-btn" data-demo-prompt="network-timeout">网络超时</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Offline 工具栏 (折叠) -->
+    <div class="ink-collapse" id="offline-collapse" style="margin-top:10px">
+      <div class="ink-collapse-head">
+        <span>Offline Demo 工具</span>
+        <span class="ink-caret">▼</span>
+      </div>
+      <div class="ink-collapse-body">
+        <div class="ink-check" style="margin-bottom:8px">
+          <input type="checkbox" id="aiops-record-stream">
+          <label for="aiops-record-stream">Record stream (录制到 localStorage)</label>
+        </div>
+        <div id="aiops-record-status" style="font-size:11px;color:var(--ink-muted);margin-bottom:8px">Recording disabled.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+          <select id="offline-fixture-select" class="ink-select" style="flex:1 1 260px" disabled>
+            <option value="">No recorded fixture</option>
+          </select>
+          <select id="offline-replay-speed" class="ink-select" style="width:100px">
+            <option value="1">1x</option>
+            <option value="2">2x</option>
+            <option value="4">4x</option>
+            <option value="instant">Instant</option>
+          </select>
+          <button id="offline-replay-start" class="ink-btn ink-btn-sm" disabled>播放录制</button>
+        </div>
+        <div id="offline-replay-status" style="font-size:11px;color:var(--ink-muted);margin-bottom:6px">Checking recorded fixtures...</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button id="offline-demo-toggle" class="ink-btn ink-btn-sm">Toggle Offline Banner</button>
+          <button id="aiops-download-fixture" class="ink-btn ink-btn-sm" disabled>Download fixture JSON</button>
+          <button id="aiops-export-markdown" class="ink-btn ink-btn-sm" disabled>Export Markdown</button>
+          <span id="aiops-report-actions" class="hidden"></span>
+        </div>
+        <div id="offline-demo-banner" class="hidden" style="margin-top:6px;padding:6px 10px;background:var(--ink-warn-soft);border:1px solid rgba(184,134,11,0.3);border-radius:6px;font-size:11px;color:#7C5C0A"></div>
+      </div>
+    </div>
+
+    <!-- AIOps 主网格: 左(计划+步骤) + 右(监控/报告) -->
+    <div class="aiops-grid" style="margin-top:12px">
+      <!-- 左栏 -->
+      <div class="aiops-left">
+        <div class="ink-panel aiops-plan-panel">
+          <div class="ink-panel-head">
+            <h3>诊断计划</h3>
+            <span id="aiops-status" style="font-size:12px;color:var(--ink-muted)">就绪</span>
+          </div>
+          <div class="aiops-scroll" id="aiops-plan">
+            <span style="color:var(--ink-muted);font-style:italic">等待 Planner...</span>
+          </div>
+        </div>
+        <div class="ink-panel aiops-steps-panel">
+          <div class="ink-panel-head"><h3>执行步骤</h3></div>
+          <div class="aiops-scroll" id="aiops-steps"></div>
+        </div>
+      </div>
+      <!-- 右栏 -->
+      <div class="aiops-right">
+        <div class="aiops-monitor" id="aiops-monitor">
+          <div class="ink-section-title">
+            <span id="aiops-right-title">诊断监控</span>
+          </div>
+          <!-- 指标卡 -->
+          <div class="metrics-cards" style="flex:0 0 auto">
+            <div class="ink-metric">
+              <div class="ink-metric-label">当前步骤</div>
+              <div class="ink-metric-value" id="mon-step">—</div>
+              <div class="ink-metric-sub" id="mon-step-label">Skill Router 工作中...</div>
+            </div>
+            <div class="ink-metric">
+              <div class="ink-metric-label">耗时</div>
+              <div class="ink-metric-value" id="mon-elapsed">0.0s</div>
+            </div>
+            <div class="ink-metric">
+              <div class="ink-metric-label">工具调用</div>
+              <div class="ink-metric-value" id="mon-tools">0</div>
+              <div class="ink-metric-sub" id="mon-tools-fail">失败 0</div>
+            </div>
+            <div class="ink-metric">
+              <div class="ink-metric-label">Tokens <span class="ink-metric-badge" id="mon-tokens-badge">~估算</span></div>
+              <div class="ink-metric-value" id="mon-tokens">0</div>
+              <div class="ink-metric-sub" id="mon-tokens-detail">输入 0 · 输出 0</div>
+            </div>
+          </div>
+          <!-- 实时输出 + 工具流水 -->
+          <div class="aiops-monitor-grid">
+            <div class="aiops-monitor-pane">
+              <div class="aiops-monitor-pane-head">
+                <span>Executor 实时输出</span>
+                <span id="mon-stream-hint" style="font-size:10px;color:var(--ink-faint)">等待中</span>
+              </div>
+              <div class="aiops-monitor-pane-body aiops-stream" id="mon-stream">
+                <span style="color:var(--ink-muted);font-style:italic">诊断开始后, 模型生成的文本会实时显示在此...</span>
+              </div>
+            </div>
+            <div class="aiops-monitor-pane">
+              <div class="aiops-monitor-pane-head">工具调用流水</div>
+              <div class="aiops-monitor-pane-body" id="mon-tool-feed">
+                <span style="color:var(--ink-muted);font-style:italic">暂无工具调用</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- 报告视图 (初始隐藏) -->
+        <div id="aiops-report" class="hidden" style="flex:1 1 auto;min-height:0;display:flex;flex-direction:column">
+          <div class="ink-section-title" style="flex:0 0 auto"><span id="aiops-report-title">诊断报告</span></div>
+          <div id="aiops-report-body" class="aiops-report-body" style="padding:0 2px"></div>
+          <div id="aiops-report-actions-bar" class="aiops-report-actions-bar hidden">
+            <button id="aiops-export-markdown-report" class="ink-btn ink-btn-sm">Export Markdown</button>
+            <span id="aiops-report-source" style="font-size:11px;color:var(--ink-faint);margin-left:auto"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== RAG 聊天 Tab ===================== -->
+  <section class="tab-pane hidden" id="tab-chat">
+    <div class="ink-panel" style="max-width:860px;margin:0 auto;display:flex;flex-direction:column;height:calc(100vh - 280px);min-height:560px">
+      <div class="ink-panel-head">
+        <h3>RAG 聊天</h3>
+        <div style="display:flex;gap:6px">
+          <button class="chat-toggle" id="chat-web-toggle"><span id="chat-web-state">关</span> · 联网</button>
+          <button class="chat-toggle is-on" id="chat-mcp-toggle"><span id="chat-mcp-state">开</span> · MCP 工具</button>
+        </div>
+      </div>
+      <div style="flex:1 1 auto;min-height:0;overflow-y:auto;padding:10px 16px" id="chat-messages">
+        <div class="chat-placeholder ink-empty" style="margin:40px auto;max-width:400px">输入问题开始 RAG 检索对话</div>
+      </div>
+      <div style="border-top:1px solid var(--ink-border);padding:12px 16px;display:flex;gap:8px">
+        <textarea id="chat-input" class="ink-textarea" rows="2" placeholder="输入问题..." style="flex:1 1 auto"></textarea>
+        <button id="chat-send" class="ink-btn ink-btn-primary" style="align-self:flex-end">发送</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 知识库 Tab ===================== -->
+  <section class="tab-pane hidden" id="tab-documents">
+    <div class="ink-panel" style="max-width:720px;margin:0 auto">
+      <div class="ink-panel-head">
+        <h3>知识库文档</h3>
+        <button id="docs-refresh" class="ink-btn ink-btn-sm">刷新</button>
+      </div>
+      <div class="ink-panel-body">
+        <div class="ink-upload-zone" id="upload-zone">
+          <div style="font-size:14px;font-weight:600;color:var(--ink-text);margin-bottom:4px">点击或拖拽上传</div>
+          <div style="font-size:12px;color:var(--ink-muted)">支持 .md 文档, 自动分片索引</div>
+          <input type="file" id="upload-input" accept=".md,.txt,.json,.csv" style="display:none">
+        </div>
+        <div id="upload-result" style="margin-top:10px;font-size:13px"></div>
+        <div id="docs-list" style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+          <div class="ink-empty">加载中...</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== AgentOps Tab ===================== -->
+  <section class="tab-pane hidden" id="tab-agentops">
+    <div class="ink-panel">
+      <div class="ink-panel-head">
+        <h3>AgentOps 控制台</h3>
+        <button id="agentops-refresh" class="ink-btn ink-btn-sm">刷新</button>
+      </div>
+      <!-- 子导航 -->
+      <div class="ink-subnav" style="margin:0 22px 16px">
+        <button class="ink-subnav-btn is-active" data-agentops-sub="overview">概览</button>
+        <button class="ink-subnav-btn" data-agentops-sub="runs">运行历史</button>
+        <button class="ink-subnav-btn" data-agentops-sub="scenarios">场景库</button>
+        <button class="ink-subnav-btn" data-agentops-sub="cases">评测用例</button>
+        <button class="ink-subnav-btn" data-agentops-sub="results">评测结果</button>
+        <button class="ink-subnav-btn" data-agentops-sub="fixtures">离线 Fixtures</button>
+      </div>
+      <div class="ink-panel-body">
+        <div id="agentops-warning" class="hidden" style="margin-bottom:12px"></div>
+
+        <!-- 概览 -->
+        <div class="agentops-sub-page" id="agentops-sub-overview">
+          <div class="metrics-cards" id="agentops-summary-grid">
+            <div class="ink-empty" style="grid-column:1/-1">Loading summary...</div>
+          </div>
+        </div>
+
+        <!-- 运行历史 -->
+        <div class="agentops-sub-page hidden" id="agentops-sub-runs">
+          <div id="agentops-runs-list">
+            <div class="ink-empty">Loading run history...</div>
+          </div>
+          <div class="ink-panel hidden" id="agentops-run-report" style="margin-top:14px;padding:14px 16px">
+            <div class="prose"></div>
+          </div>
+        </div>
+
+        <!-- 场景库 -->
+        <div class="agentops-sub-page hidden" id="agentops-sub-scenarios">
+          <form id="agentops-scenario-form" class="ink-panel" style="margin-bottom:14px;padding:14px 16px">
+            <div class="ink-form-grid">
+              <input name="id" class="ink-input" placeholder="scenario id" required>
+              <input name="title" class="ink-input" placeholder="title" required>
+              <input name="expected_skill" class="ink-input" placeholder="expected_skill (hint)">
+              <input name="tags" class="ink-input" placeholder="tags, comma separated">
+            </div>
+            <textarea name="input_text" class="ink-textarea" rows="2" placeholder="scenario input" style="margin-top:8px" required></textarea>
+            <textarea name="description" class="ink-textarea" rows="1" placeholder="description" style="margin-top:8px"></textarea>
+            <label class="ink-check" style="margin-top:8px"><input type="checkbox" name="is_builtin"> builtin</label>
+            <div class="ink-form-actions" style="margin-top:10px">
+              <button type="button" id="agentops-scenario-reset" class="ink-btn ink-btn-sm">Clear</button>
+              <button type="submit" class="ink-btn ink-btn-sm ink-btn-primary">Save scenario</button>
+            </div>
+          </form>
+          <div id="agentops-scenarios-list" style="display:flex;flex-direction:column;gap:8px">
+            <div class="ink-empty">Loading scenarios...</div>
+          </div>
+        </div>
+
+        <!-- 评测用例 -->
+        <div class="agentops-sub-page hidden" id="agentops-sub-cases">
+          <form id="agentops-eval-case-form" class="ink-panel" style="margin-bottom:14px;padding:14px 16px">
+            <div class="ink-form-grid">
+              <input name="id" class="ink-input" placeholder="eval case id" required>
+              <input name="name" class="ink-input" placeholder="name" required>
+              <input name="expected_skill" class="ink-input" placeholder="expected_skill">
+              <input name="expected_tools" class="ink-input" placeholder="expected tools, comma separated">
+              <input name="tags" class="ink-input" placeholder="tags, comma separated">
+            </div>
+            <textarea name="input_text" class="ink-textarea" rows="2" placeholder="eval input" style="margin-top:8px" required></textarea>
+            <label class="ink-check" style="margin-top:8px"><input type="checkbox" name="enabled" checked> enabled</label>
+            <div class="ink-form-actions" style="margin-top:10px">
+              <button type="button" id="agentops-eval-case-reset" class="ink-btn ink-btn-sm">Clear</button>
+              <button type="submit" class="ink-btn ink-btn-sm ink-btn-primary">Save eval case</button>
+            </div>
+          </form>
+          <div id="agentops-eval-cases-list" style="display:flex;flex-direction:column;gap:8px">
+            <div class="ink-empty">Loading eval cases...</div>
+          </div>
+        </div>
+
+        <!-- 评测结果 -->
+        <div class="agentops-sub-page hidden" id="agentops-sub-results">
+          <div id="agentops-eval-results-list">
+            <div class="ink-empty">Loading eval results...</div>
+          </div>
+        </div>
+
+        <!-- 离线 Fixtures -->
+        <div class="agentops-sub-page hidden" id="agentops-sub-fixtures">
+          <div id="agentops-fixtures-list" style="display:flex;flex-direction:column;gap:8px">
+            <div class="ink-empty">Loading offline fixture index...</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 指标 Tab ===================== -->
+  <section class="tab-pane hidden" id="tab-metrics">
+    <div class="ink-panel">
+      <div class="ink-panel-head">
+        <h3>Prometheus 指标</h3>
+        <span style="font-size:11px;color:var(--ink-faint)">每 15s 自动刷新</span>
+      </div>
+      <div class="ink-panel-body">
+        <div class="metrics-cards" id="metrics-cards">
+          <div class="ink-empty" style="grid-column:1/-1">加载中...</div>
+        </div>
+        <div id="metrics-charts"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 告警 Tab ===================== -->
+  <section class="tab-pane hidden" id="tab-webhook">
+    <div class="ink-panel">
+      <div class="ink-panel-head">
+        <h3>Alertmanager 告警 Webhook</h3>
+        <div style="display:flex;gap:6px">
+          <button id="webhook-refresh" class="ink-btn ink-btn-sm">刷新</button>
+          <button id="webhook-clear" class="ink-btn ink-btn-sm ink-btn-danger">清空</button>
+        </div>
+      </div>
+      <div class="ink-panel-body">
+        <div id="webhook-list" style="display:flex;flex-direction:column;gap:8px">
+          <div class="ink-empty">加载中...</div>
+        </div>
+      </div>
+    </div>
+  </section>
+</nav>
+
+<!-- ============================= Footer ============================= -->
+<footer class="ink-shell">
+  <div class="ink-footer">Multi-Agent AIOps · 水墨风</div>
 </footer>
 
-<!-- cache-busting: 改版后前端自动加载最新 JS, 避免浏览器用旧缓存 -->
-<script src="/app.js?v=20260519-agentops"></script>
+<script type="module" src="/js/main.js"></script>
 </body>
 </html>

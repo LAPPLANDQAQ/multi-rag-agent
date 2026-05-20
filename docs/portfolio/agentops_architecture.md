@@ -45,12 +45,12 @@ AgentOps uses best-effort boundaries:
 
 - Live diagnosis should continue even if run persistence fails.
 - Cache miss, serialization failure, or Redis outage should degrade to memory/no cache behavior.
-- Metrics labels are coarse and should never include user prompts, secrets, raw URLs, or report text.
+- Metrics labels are coarse and should never include raw user inputs, secrets, raw URLs, or report text.
 - Offline eval handles an empty fixture set as a valid smoke-level report rather than inventing sample data.
 
 ## What This Does Not Claim
 
-- It does not claim ownership of the upstream LangGraph topology, AgentHarness, MCP servers, or open-webSearch implementation.
+- It does not claim exclusive authorship of the existing LangGraph topology, AgentHarness, MCP servers, or open-webSearch implementation.
 - It does not claim production deployment; the current target is a local demo and interview-ready engineering portfolio.
 - It does not claim benchmark-grade diagnosis accuracy from the offline fixture evaluator.
 

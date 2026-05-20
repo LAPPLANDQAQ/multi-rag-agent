@@ -114,7 +114,7 @@ If all service checks are warnings but repository and Python checks pass:
 1. Present the portfolio docs instead of a live run:
    - `docs/portfolio/facts.md`
    - `docs/portfolio/sse_contract.md`
-   - `docs/portfolio/demo_script.md`
+   - `docs/portfolio/release_notes.md`
 2. Explain that the smoke script is intentionally read-only and did not start Docker or FastAPI.
 3. Show which dependency is missing: Docker daemon, FastAPI, Milvus readiness, Skills endpoint, or open-webSearch.
 4. Avoid claiming a live diagnosis or benchmark result.
@@ -122,7 +122,7 @@ If all service checks are warnings but repository and Python checks pass:
 If Docker and FastAPI are healthy:
 
 1. Open `http://localhost:9900`.
-2. Run one demo input from `docs/portfolio/demo_script.md`.
+2. Run one safe demo input from `docs/portfolio/release_notes.md`.
 3. Observe the actual `skill_selected` event and streamed report.
 
 ## Safety Rules
@@ -133,4 +133,3 @@ If Docker and FastAPI are healthy:
 - Do not write to Milvus or Redis.
 - Do not inspect or print API keys.
 - Treat all service availability checks as observations, not fixes.
-

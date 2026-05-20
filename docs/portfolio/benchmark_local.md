@@ -23,8 +23,8 @@ Determine whether this repository contains locally runnable benchmark or eval sc
 | Chat model config | `DASHSCOPE_CHAT_MODEL=qwen-max` | `.env`, value only | n=1 | Config fact only |
 | Router model config | `DASHSCOPE_ROUTER_MODEL=qwen-turbo` | `.env`, value only | n=1 | Config fact only |
 | Embedding model config | `DASHSCOPE_EMBEDDING_MODEL=text-embedding-v4` | `.env`, value only | n=1 | Config fact only |
-| Optional DeepSeek endpoint | `DEEPSEEK_BASE_URL=https://api.deepseek.com` | `.env`, value only | n=1 | Config fact only |
-| API keys | DashScope and DeepSeek keys present, values redacted | `.env` presence check | n=1 | Do not disclose |
+| Optional third-party endpoint | Provider base URL configured | `.env`, value only | n=1 | Config fact only |
+| API keys | Model-provider keys present, values redacted | `.env` presence check | n=1 | Do not disclose |
 | Web search provider | `open_websearch`, base URL `http://127.0.0.1:3210` | `.env`, value only | n=1 | Config fact only |
 
 Docker command output included:
@@ -96,7 +96,7 @@ Output summary:
 No local benchmark or eval script was found for:
 - RAG MRR reproduction
 - retrieval recall measurement
-- prompt token before/after measurement
+- input token before/after measurement
 - tool execution latency benchmark
 - end-to-end AIOps diagnosis quality evaluation
 
@@ -124,10 +124,10 @@ Sample size: n=5 files. This result is smoke-level and not resume-safe as a retr
 
 | README/code claim | Local reproduction status | Resume-safe? |
 |---|---|---|
-| Planner prompt tokens `9098 -> 575`, down `93.5%` | Not reproduced; no local measurement script found | No |
-| Full-chain prompt tokens `10526 -> 2450`, down `76.7%` | Not reproduced; no local measurement script found | No |
+| Planner input tokens `9098 -> 575`, down `93.5%` | Not reproduced; no local measurement script found | No |
+| Full-chain input tokens `10526 -> 2450`, down `76.7%` | Not reproduced; no local measurement script found | No |
 | Full-chain total tokens `11889 -> 3988`, down `66.5%` | Not reproduced; no local measurement script found | No |
-| Tool catalog prompt tokens down `55.3%` | Not reproduced; no local measurement script found | No |
+| Tool catalog input tokens down `55.3%` | Not reproduced; no local measurement script found | No |
 | RAG MRR `0.882 -> 0.938` | Not reproduced; no local eval script found | No |
 | Streaming usage/token display exists in code | Code-inspection only; not benchmark | Yes, as an implementation/inspection statement only |
 
@@ -150,4 +150,3 @@ A small smoke-level eval is feasible later without changing the core system:
 - Keep results in `docs/portfolio/benchmark_local.md` or a new explicitly smoke-level document.
 
 This should be described as "local smoke check" rather than "benchmark" unless it has a clear dataset, scoring rule, and repeatable runner.
-

@@ -1,0 +1,107 @@
+/* Reset & base */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: var(--ink-bg);
+    color: var(--ink-text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.55;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+    font-family: var(--font-serif);
+    color: var(--ink-text-strong);
+    margin: 0;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+}
+
+a {
+    color: var(--ink-accent);
+    text-decoration: none;
+}
+a:hover { text-decoration: underline; }
+
+button {
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: inherit;
+}
+
+input,
+textarea,
+select {
+    font-family: inherit;
+    color: var(--ink-text);
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--ink-border-strong);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--ink-muted);
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.hidden { display: none !important; }
+
+/* Markdown / 报告 */
+.prose {
+    color: var(--ink-text);
+    font-size: 14px;
+    line-height: 1.7;
+}
+.prose h1 { font-size: 1.5rem; font-weight: 600; margin: 1em 0 0.5em; color: var(--ink-text-strong); font-family: var(--font-serif); }
+.prose h2 { font-size: 1.2rem; font-weight: 600; margin: 1em 0 0.4em; color: var(--ink-text-strong); font-family: var(--font-serif); }
+.prose h3 { font-size: 1.05rem; font-weight: 600; margin: 0.8em 0 0.3em; color: var(--ink-text); font-family: var(--font-serif); }
+.prose p  { margin: 0.5em 0; }
+.prose ul, .prose ol { margin-left: 1.4em; }
+.prose li { margin: 0.25em 0; }
+.prose strong { color: var(--ink-text-strong); font-weight: 600; }
+.prose code {
+    background: var(--ink-bg-soft);
+    color: var(--ink-accent-strong);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.88em;
+}
+.prose pre {
+    background: #2A2620;
+    color: #F4F1EA;
+    padding: 12px 14px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.5;
+    margin: 0.7em 0;
+}
+.prose pre code { background: transparent; color: inherit; padding: 0; }
+
+@keyframes inkFadeIn {
+    from { opacity: 0; transform: translateY(-3px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
