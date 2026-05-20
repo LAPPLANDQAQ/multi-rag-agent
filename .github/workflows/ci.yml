@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - "feat/**"
+      - "test/**"
+      - "ci/**"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: Python checks
+    runs-on: ubuntu-latest
+    env:
+      DASHSCOPE_API_KEY: dummy-ci-key
+      KB_ADMIN_TOKEN: dummy-ci-token
+      AGENTOPS_DB_URL: sqlite:///data/agentops_ci.db
+      WEB_SEARCH_PROVIDER: mock
+      LOCAL_LLM_ENABLED: "false"
+      CACHE_BACKEND: memory
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Compile Python sources
+        run: python -m compileall -q app mcp_servers scripts
+
+      - name: Check installed Python packages
+        run: pip check
+
+      - name: Run Python tests
+        run: pytest -q
+
+  node:
+    name: Node checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: open-webSearch-main
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: open-webSearch-main/package-lock.json
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Audit Node dependencies
+        run: npm audit --audit-level=high
+
+      - name: Build Node package
+        run: npm run build
+
+      - name: Run Node tests
+        run: npm test
