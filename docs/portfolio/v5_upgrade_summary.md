@@ -66,6 +66,71 @@ Phase 10 local validation on 2026-05-20:
 - GitHub Actions CI passed on `feat/github-actions-ci` run `26133548432`.
 - Node `npm audit --audit-level=high` passed locally during Phase 9 while reporting only moderate vulnerabilities.
 
+## Final Integration
+
+Final local integration was completed on `main` through non-fast-forward merges of all phase branches in dependency order. The last integration merge before release polish is `b6246f0` (`merge: integrate docs demo polish`). The release tag target is the authoritative final commit for the published version.
+
+Per-merge validation was run after each risky integration step:
+
+- Phase 1 through Phase 5: `compileall`, `validate_skill`, and `pytest` passed as the test count grew from 3 to 15.
+- Phase 6: pytest expanded to 35 passing tests.
+- Phase 7: metrics integration passed with 37 tests.
+- Phase 8 through Phase 10: cache, CI, and docs polish passed with 44 tests.
+
+Final release validation uses:
+
+```powershell
+python -m compileall -q app mcp_servers scripts
+python -m pip check
+python scripts\validate_skill.py
+python scripts\init_agentops_db.py
+python scripts\run_agent_eval.py --mode offline
+pytest -q
+powershell -ExecutionPolicy Bypass -File scripts\smoke_check.ps1
+```
+
+Node validation for `open-webSearch-main` uses:
+
+```powershell
+npm ci
+npm audit --audit-level=high
+npm run build
+npm test
+```
+
+Final release validation results on 2026-05-20:
+
+- `python -m compileall -q app mcp_servers scripts`: passed.
+- `python -m pip check`: passed, `No broken requirements found.`
+- `python scripts\validate_skill.py`: passed for 5 Skill files, with the existing `container_diagnosis` warnings for high-risk `docker_restart`.
+- `python scripts\init_agentops_db.py`: created/verified `demo_scenarios`, `diagnosis_runs`, `eval_cases`, and `eval_results`.
+- `python scripts\run_agent_eval.py --mode offline`: passed, commit `b6246f0`, sample size `0`, saved result `9b0a9cab2ab84ae587b882f5849a25fd`.
+- `pytest -q`: `44 passed`.
+- `powershell -ExecutionPolicy Bypass -File scripts\smoke_check.ps1`: 10 passed, 1 Docker permission warning, 0 critical failures.
+- `bash scripts/smoke_check.sh`: skipped because WSL/Bash is not installed in this Windows environment.
+- `npm ci`: passed after running outside the sandbox because the user-level npm cache was blocked by Windows `EPERM`.
+- `npm audit --audit-level=high`: passed; only moderate `ws/jsdom` advisories were reported.
+- `npm run build`: passed.
+- `npm test`: 30 current TypeScript tests passed, 0 network issues excused.
+- Runtime endpoints checked on `http://localhost:9900`: `/api/v1/health`, `/api/v1/health/ready`, `/api/v1/skills`, `/api/v1/agentops/summary`, `/api/v1/agentops/runs`, `/api/v1/agentops/scenarios`, `/api/v1/agentops/eval-cases`, `/api/v1/agentops/eval-results`, `/metrics`, and Web UI root all returned successfully.
+
+## Demo Flow
+
+1. Start dependencies with Docker Compose when Milvus/Redis/open-webSearch are needed.
+2. Start the app with `powershell -NoProfile -ExecutionPolicy Bypass -File .\run.ps1`.
+3. Open `http://localhost:9900` and run an AIOps diagnosis from the main diagnosis tab.
+4. Confirm SSE events stream through Skill selection, plan, tool calls, usage, and report generation.
+5. Open AgentOps and review Overview, Run History, Demo Scenarios, Eval Cases, Eval Results, and Offline Fixture Replay.
+6. Run `python scripts\run_agent_eval.py --mode offline` to regenerate the EvalOps report from reviewed recorded fixtures.
+
+## Resume-Ready Summary
+
+- Added an AgentOps data layer and REST APIs for diagnosis run history, demo scenarios, eval cases, and eval results.
+- Persisted diagnosis summaries from the existing SSE path without rewriting the LangGraph diagnosis topology.
+- Built an AgentOps Web Console for run history, scenario management, eval case management, eval result review, and recorded fixture replay.
+- Added offline EvalOps around reviewed SSE fixtures with deterministic metrics and a Markdown report.
+- Added pytest coverage, Prometheus-style metrics, Redis/Memory cache support, and GitHub Actions CI for repeatable validation.
+
 ## Known Limitations
 
 - The current demo target is local development, not production deployment.

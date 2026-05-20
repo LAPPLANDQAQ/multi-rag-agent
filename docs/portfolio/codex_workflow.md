@@ -49,7 +49,13 @@ python scripts\run_agent_eval.py --mode offline
 
 CI added the same conservative checks for Python plus Node install/audit/build/test for `open-webSearch-main`.
 
-## 6. How Diffs Were Reviewed
+## 6. How Merge/Release Was Finalized
+
+Final integration used `main` as the release branch and merged completed phase branches in dependency order: data layer, CRUD API, diagnosis persistence, web console, offline eval, pytest, metrics, cache, CI, and docs polish. Each merge was non-destructive and followed by `compileall`, Skill validation, and pytest before moving to the next phase.
+
+The release preparation then updated public README/portfolio wording, re-ran the full local validation suite, created a release commit only for documentation/integration polish, tagged the release as `v0.2.0-agentops` unless that tag already existed, and pushed `main` plus the release tag without force-push or branch deletion.
+
+## 7. How Diffs Were Reviewed
 
 Diffs were reviewed for:
 
@@ -60,7 +66,7 @@ Diffs were reviewed for:
 - Tests covering new behavior.
 - Documentation separating upstream capabilities from local enhancements.
 
-## 7. How Rollback Was Planned
+## 8. How Rollback Was Planned
 
 Each phase had an explicit rollback note. Examples:
 
@@ -70,7 +76,7 @@ Each phase had an explicit rollback note. Examples:
 - Cache can be disabled through config or removed from low-risk read paths.
 - Documentation-only changes can be reverted without touching runtime feature commits.
 
-## 8. What Tasks Were Suitable For AI Generation
+## 9. What Tasks Were Suitable For AI Generation
 
 Good AI-assisted tasks included:
 
@@ -82,7 +88,7 @@ Good AI-assisted tasks included:
 - CI YAML.
 - Portfolio documentation drafts based on inspected files.
 
-## 9. What Tasks Required Human Verification
+## 10. What Tasks Required Human Verification
 
 Human review is still needed for:
 
@@ -93,7 +99,7 @@ Human review is still needed for:
 - Whether UI screenshots represent a clean environment.
 - Whether GitHub Actions should be made branch-protection-required.
 
-## 10. Lessons Learned
+## 11. Lessons Learned
 
 - Small, reversible phases are safer than large rewrites when an existing agent stack already works.
 - Side-channel persistence avoids destabilizing the live SSE path.

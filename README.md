@@ -1,4 +1,6 @@
-# MultiAgent AIOps
+# Multi-Agent AIOps OnCall Copilot with AgentOps Console
+
+A Multi-Agent AIOps diagnosis platform based on RAG, MCP, LangGraph, Milvus, Redis, and SSE streaming. It supports Skill-first diagnosis, RAG retrieval, read-only MCP tools, Markdown reports, AgentOps run history, EvalOps offline evaluation, Prometheus metrics, Redis/Memory cache, pytest, and GitHub Actions CI.
 
 面向 OnCall / SRE 场景的多智能体智能运维诊断平台。系统围绕告警、故障现象和运维问答构建，支持 Skill 路由、诊断计划生成、只读工具调用、RAG 知识库检索、SSE 流式过程展示和 Markdown 诊断报告输出。
 
@@ -85,11 +87,15 @@ flowchart TD
 
 This repository includes an additive AgentOps layer around the existing AIOps diagnosis flow. It does not replace the LangGraph diagnosis pipeline. It records diagnosis runs, manages demo scenarios and eval cases, stores eval results, and exposes a lightweight web console for run history and offline fixture replay.
 
+The AgentOps Console surfaces Diagnosis Run History, Demo Scenarios, Eval Cases, Eval Results, Offline Fixture Replay, Prometheus Metrics, Redis/Memory Cache behavior, Pytest coverage, GitHub Actions CI status, and the Codex Workflow documentation.
+
 ### Capabilities
 
 - Diagnosis run history persisted through the existing SSE diagnosis path.
 - Demo scenario management for repeatable interview/demo inputs.
 - Eval case management and offline fixture evaluation.
+- Eval results storage for offline and optional live evaluation runs.
+- Offline Fixture Replay in the web console using reviewed recorded SSE streams.
 - Prometheus-style metrics at `GET /metrics`.
 - Optional memory/Redis cache for low-risk read-only AgentOps data.
 - pytest coverage and GitHub Actions CI checks.
@@ -112,6 +118,18 @@ This repository includes an additive AgentOps layer around the existing AIOps di
 - AgentOps CRUD and persisted run counters.
 - EvalOps score/case metrics.
 - Cache hit/miss counters for memory or Redis backends.
+
+### Cache
+
+`app/core/cache.py` provides a conservative Redis/Memory cache abstraction. Redis is optional; when Redis is unavailable or disabled, the project falls back to in-memory TTL cache or no-op cache behavior. The cache is used only for low-risk read-only AgentOps summaries/lists and does not cache complete diagnosis reports by default.
+
+### Testing
+
+The pytest suite covers AgentOps repository behavior, AgentOps APIs, EvalOps metrics, fixture schema checks, Skill validation, metrics, cache behavior, and smoke script expectations. Tests avoid exact natural-language LLM assertions and do not require real LLM keys, Milvus, Redis, Docker Compose, or external model calls.
+
+### CI
+
+`.github/workflows/ci.yml` runs deterministic Python and Node checks: `compileall`, `pip check`, `pytest`, `npm ci`, `npm audit --audit-level=high`, `npm run build`, and `npm test`. The workflow uses dummy environment values so CI validates integration quality without depending on live LLM credentials.
 
 ### Eval And Verification Commands
 
@@ -394,8 +412,10 @@ X-KB-Admin-Token: your-admin-token
 | `docs/portfolio/sse_contract.md` | AIOps SSE 事件契约 |
 | `docs/portfolio/smoke_check.md` | 演示前只读 smoke check 说明 |
 | `docs/portfolio/agentops_architecture.md` | AgentOps / EvalOps 增量架构与边界 |
+| `docs/portfolio/eval_report.md` | EvalOps 离线评估运行报告、样本数量、指标和限制 |
 | `docs/portfolio/v5_upgrade_summary.md` | V5 分阶段升级总结、验证和限制 |
 | `docs/portfolio/codex_workflow.md` | Codex 辅助开发流程与人工验证边界 |
+| `docs/portfolio/ownership.md` | 上游来源、第三方资产和本地增强边界 |
 
 ## 项目结构
 
