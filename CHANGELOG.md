@@ -42,3 +42,7 @@
 - 已实测仅开启联网及联网与 MCP 同时开启的中文聊天，两种模式均返回 3 条真实搜索结果并完成回答；历史中文报告也已验证正常显示。
 - `.env`、真实密钥、会话数据库、数据卷、运行日志、截图、依赖目录及编译产物继续由 Git 忽略。
 - 本机部署步骤和验证记录位置详见 [LOCAL_DEPLOYMENT.md](LOCAL_DEPLOYMENT.md)。
+
+### 文档
+
+- README 补充 Windows 一键本地部署入口（`start-local` / `stop-local`、`compose.local.yml`）、MinIO 本地端口说明、文档索引、项目结构、markdown-it 许可说明，并整理快速开始步骤。

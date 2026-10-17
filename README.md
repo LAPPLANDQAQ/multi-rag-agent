@@ -13,9 +13,9 @@
 - **MCP 工具接入**：接入本机系统、联网搜索、Windows 事件日志、网络诊断和 Docker 诊断工具。
 - **工具权限边界**：通过 Skill 白名单、工具风险元数据和 `PERMISSION_MODE` 控制工具调用；高风险操作默认禁用。
 - **RAG Chat**：提供独立知识库问答接口，支持会话记忆、多轮改写、摘要压缩、MCP 工具增强和受控联网搜索。
-- **流式可观测输出**：前端实时展示 Skill 选择、诊断计划、步骤执行、工具调用、token/耗时统计、预算提示和最终报告。
+- **流式可观测输出**：前端实时展示 Skill 选择、诊断计划、步骤执行、工具调用、token/耗时统计、预算提示和统一五段结构的 Markdown 诊断报告（前后端共享同一套换行与结构规范化逻辑）。
 - **AgentOps / EvalOps**：记录诊断运行、管理演示场景和评测用例，支持真实 SSE 录制回放、离线评估和结果留存。
-- **工程化验证**：提供 pytest 测试、Prometheus 风格指标、可选 Redis/内存缓存和 GitHub Actions CI。
+- **工程化验证**：提供 pytest 与 Node 回归测试、Prometheus 风格指标、可选 Redis/内存缓存和 GitHub Actions CI。
 
 ## 架构概览
 
@@ -86,8 +86,8 @@ AgentOps / EvalOps 是围绕主诊断链路增加的旁路能力：运行记录�
 | RAG 聊天 | 基于知识库进行问答，可选联网搜索和工具增强 |
 | 知识库 | 上传、查看和删除知识库文档 |
 | AgentOps 控制台 | 查看运行概览、诊断历史、报告、场景库、评测用例和评测结果 |
-| 离线录制文件 | 使用审核后的真实 SSE 录制文件进行回放和离线评估 |
-| 指标与告警 | 查看 `/metrics` 指标和 Alertmanager 告警回调历史 |
+| 离线录制文件 | 使用审核后的真实 SSE 录制文件进行回放和离线评估，内置公开 DNS 诊断示例 `deployment_dns` |
+| 指标与告警 | 查看本次服务启动以来的诊断指标（每 15 秒刷新）和 Alertmanager 告警回调历史 |
 
 RAG Chat 已支持模型或工具执行失败时的降级收尾：接口会返回降级进度、可展示回答和统计信息，避免前端把整条检索流程判定为硬中断。
 
@@ -169,13 +169,23 @@ LOCAL_LLM_BASE_URL=http://localhost:11434/v1
 LOCAL_LLM_MODEL=qwen2.5:7b
 ```
 
-### 4. 启动基础依赖
+### 4. 启动依赖与服务
+
+方式一：Windows 一键脚本（推荐）。双击 `start-local.cmd`，或在 PowerShell 中运行：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\start-local.ps1
+```
+
+脚本会使用 `compose.local.yml` 启动依赖容器（独立容器名，端口仅绑定 `127.0.0.1`，MinIO 控制台映射为 19001），再依次启动 open-webSearch 和五个 MCP 服务，校验配置、幂等初始化 AgentOps 数据表并启动后端，就绪后自动用系统默认浏览器打开前端（加 `-NoBrowser` 跳过）。停止时使用 `stop-local.cmd`，只停止本次部署的进程，保留知识库与运行数据。详细说明见 [LOCAL_DEPLOYMENT.md](LOCAL_DEPLOYMENT.md)。
+
+方式二：手动启动基础依赖。
 
 ```powershell
 docker compose up -d
 ```
 
-该命令会启动 Milvus、etcd、MinIO、Attu、Redis 和 open-webSearch。
+该命令会启动 Milvus、etcd、MinIO、Attu、Redis 和 open-webSearch。如需与其它部署隔离并仅绑定本机回环端口，可改用 `docker compose -f docker-compose.yml -f compose.local.yml up -d`。
 
 ### 5. 导入知识库
 
@@ -199,6 +209,8 @@ python scripts\convert_prometheus_alerts.py
 ```
 
 ### 6. 启动应用
+
+使用方式一（`start-local`）时可跳过本步，脚本已启动后端并打开前端。手动启动：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\run.ps1
@@ -233,6 +245,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\run.ps1 -Stop
 | 就绪检查 | http://localhost:9900/api/v1/health/ready |
 | Milvus 管理页面 | http://localhost:8000 |
 | 运行指标 | http://localhost:9900/metrics |
+
+使用 `compose.local.yml` 时，MinIO 管理页为 http://localhost:19001（默认 Compose 为 9001），其余地址不变。
 
 ## 使用示例
 
@@ -345,6 +359,8 @@ RAG 联网需要同时启用服务端 `RAG_CHAT_WEB_SEARCH_ENABLED=true` 和页�
 | `docs/portfolio/smoke_check.md` | 演示前只读检查说明 |
 | `docs/portfolio/agentops_architecture.md` | AgentOps / EvalOps 增量架构与边界 |
 | `docs/portfolio/release_notes.md` | 版本更新、前端重构、AgentOps / EvalOps、验证、演示与来源说明 |
+| `CHANGELOG.md` | 面向用户的版本更新记录 |
+| `LOCAL_DEPLOYMENT.md` | Windows 本地一键部署说明、组件清单与本机兼容处理 |
 
 ## 项目结构
 
@@ -356,20 +372,30 @@ multi-rag-agent/
 │   ├── core/               # 模型、Embedding、Milvus、RAG、联网搜索、缓存和指标
 │   ├── runtime/            # 运行时控制、权限、工具过滤和并行工具执行
 │   ├── services/           # AIOps、RAG Chat、文档服务
-│   └── skills/             # Skill 定义、加载和注册
+│   ├── skills/             # Skill 定义、加载和注册
+│   └── utils/              # 报告 Markdown 规范化等公共工具
 ├── mcp_servers/            # MCP 工具服务
 ├── frontend/               # 前端控制台
 │   ├── js/                 # 核心工具和业务模块
-│   └── styles/             # 样式令牌、基础样式和组件样式
+│   ├── styles/             # 样式令牌、基础样式和组件样式
+│   ├── vendor/             # 本地第三方资源（markdown-it 浏览器构建）
+│   └── demo_fixtures/      # 离线回放录制文件与清单
+├── tests/                  # pytest 回归测试与 Node 测试
 ├── docs/sop/               # 内置 OnCall SOP
 ├── docs/portfolio/         # 本地事实、架构、SSE、验证和版本说明
 ├── data/kb_corpus/         # RAG 知识库语料
-├── scripts/                # 知识库、语料转换、告警模拟和验证脚本
+├── scripts/                # 知识库、语料转换、告警模拟、本地 MCP 和验证脚本
 ├── open-webSearch-main/    # 本地联网搜索服务
 ├── docker-compose.yml      # Milvus + etcd + MinIO + Attu + Redis + open-webSearch
+├── compose.local.yml       # 本地部署覆盖：独立容器名 + 仅回环端口
 ├── requirements.txt
+├── requirements.local.lock.txt  # 本地部署实际锁定的依赖版本
 ├── .env.example
-└── run.ps1                 # Windows 一键启动脚本
+├── run.ps1                 # Windows 手动启动脚本
+├── start-local.ps1/.cmd    # 本地一键启动：依赖容器 + 搜索服务 + MCP + 后端
+├── stop-local.ps1/.cmd     # 停止本地部署并保留数据
+├── CHANGELOG.md            # 版本更新记录
+└── LOCAL_DEPLOYMENT.md     # 本地部署与使用说明
 ```
 
 ## 许可与第三方说明
@@ -377,6 +403,7 @@ multi-rag-agent/
 本项目代码按 **MIT License** 口径维护。仓库中集成或参考的第三方开源资产请遵守各自许可和署名要求：
 
 - **Aas-ee/open-webSearch**：本地联网搜索服务，仓库副本位于 `open-webSearch-main/`，其本地许可证文件为 Apache License 2.0。
+- **markdown-it**：前端报告渲染使用的 Markdown 解析器，浏览器 ESM 构建本地存放于 `frontend/vendor/`，遵循 MIT License，无需运行时访问 CDN。
 - **samber/awesome-prometheus-alerts**：Prometheus 告警语料来源，仓库副本位于 `data/kb_corpus/awesome-prometheus-alerts/`，原始内容遵循 CC BY 4.0。
 - **Kkkirito-123/mutil-rag-agent**：本仓库早期工程基础参考来源之一；相关来源说明可参考 `docs/portfolio/release_notes.md`。
 - **小林 OnCall Agent 项目**：OnCall Agent 场景、诊断流程和表达方式的参考来源之一。
