@@ -1,0 +1,35 @@
+name: multi-rag-agent-local
+
+services:
+  etcd:
+    container_name: multi-rag-local-etcd
+    restart: unless-stopped
+  minio:
+    container_name: multi-rag-local-minio
+    restart: unless-stopped
+    ports: !override
+      - "127.0.0.1:19001:9001"
+  standalone:
+    container_name: multi-rag-local-milvus
+    restart: unless-stopped
+    ports: !override
+      - "127.0.0.1:19530:19530"
+      - "127.0.0.1:9091:9091"
+  attu:
+    container_name: multi-rag-local-attu
+    restart: unless-stopped
+    ports: !override
+      - "127.0.0.1:8000:3000"
+  redis:
+    container_name: multi-rag-local-redis
+    restart: unless-stopped
+    ports: !override
+      - "127.0.0.1:6379:6379"
+  open-websearch:
+    container_name: multi-rag-local-open-websearch
+    ports: !override
+      - "127.0.0.1:3210:3210"
+
+networks:
+  default:
+    name: multi_rag_agent_local_network

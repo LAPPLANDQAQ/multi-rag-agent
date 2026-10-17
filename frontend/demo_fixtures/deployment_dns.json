@@ -1,0 +1,448 @@
+{
+  "metadata": {
+    "schema_version": 1,
+    "source": "real_sse",
+    "recorded_at": "2026-10-17T08:48:05.531238",
+    "scenario_id": "deployment_dns",
+    "input": "仅用 dns_lookup 检查 www.example.com 的域名解析是否正常，简短报告结果，不读取系统、容器或日志。",
+    "app_commit": "be28b46c7e1c386b67e023f450d04914665601e5",
+    "event_count": 34,
+    "duration_ms": 66544,
+    "status": "succeeded",
+    "per_event_timing_available": false
+  },
+  "events": [
+    {
+      "event": "message",
+      "data": {
+        "type": "start",
+        "stage": "diagnosis_init",
+        "message": "开始故障诊断",
+        "data": {
+          "query": "仅用 dns_lookup 检查 www.example.com 的域名解析是否正常，简短报告结果，不读取系统、容器或日志。",
+          "session_id": "deployment-dns-check"
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "transition",
+        "stage": "router_ok",
+        "message": "chosen=network_diagnosis confidence=0.9",
+        "data": {
+          "node": "skill_router",
+          "ts": "2026-10-17T16:48:08.971+08:00",
+          "reason": "router_ok"
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "skill_selected",
+        "stage": "skill_selected",
+        "message": "已选定 Skill: network_diagnosis",
+        "data": {
+          "skill": "network_diagnosis",
+          "reason": "用户请求检查域名解析, 属于网络连通性诊断范畴"
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "transition",
+        "stage": "planner_ok",
+        "message": "skill=network_diagnosis steps=2",
+        "data": {
+          "node": "planner",
+          "ts": "2026-10-17T16:48:10.723+08:00",
+          "reason": "planner_ok"
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "plan",
+        "stage": "plan_created",
+        "message": "诊断计划已生成, 共 2 步",
+        "data": {
+          "plan": [
+            "调用 dns_lookup('www.example.com') 检查域名解析是否正常。",
+            "汇总诊断结论, 输出根因 + 处置建议"
+          ]
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "step_start",
+        "stage": "step_start",
+        "message": "",
+        "data": {
+          "iteration": 1,
+          "step": "调用 dns_lookup('www.example.com') 检查域名解析是否正常。",
+          "total": 2
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "usage",
+        "stage": "usage",
+        "message": "",
+        "data": {
+          "round": 1,
+          "input_tokens": 3029,
+          "output_tokens": 22,
+          "total_tokens": 3051,
+          "model": "qwen-max",
+          "iteration": 1
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "tool_call",
+        "stage": "tool_call",
+        "message": "",
+        "data": {
+          "name": "dns_lookup",
+          "elapsed_ms": 1942,
+          "read_only": true,
+          "result_chars": 169,
+          "status": "ok",
+          "iteration": 1
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "step_token",
+        "stage": "step_token",
+        "message": "",
+        "data": {
+          "content": "DNS",
+          "iteration": 1
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "step_token",
+        "stage": "step_token",
+        "message": "",
+        "data": {
+          "content": " 解",
+          "iteration": 1
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "step_token",
+        "stage": "step_token",
+        "message": "",
+        "data": {
+          "content": "析结果如下",
+          "iteration": 1
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "step_token",
+        "stage": "step_token",
+        "message": "",
+        "data": {
+          "content": "：\n- 域名",
+          "iteration": 1
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "step_token",
+        "stage": "step_token",
+        "message": "",
+        "data": {
+          "content": " `www.example.com",
+          "iteration": 1
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "step_token",
+        "stage": "step_token",
+        "message": "",
+        "data": {
+          "content": "` 对应的 IP",
+          "iteration": 1
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "step_token",
+        "stage": "step_token",
+        "message": "",
+        "data": {
+          "content": " 地址为 `1",
+          "iteration": 1
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "step_token",
+        "stage": "step_token",
+        "message": "",
+        "data": {
+          "content": "04.20.",
+          "iteration": 1
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "step_token",
+        "stage": "step_token",
+        "message": "",
+        "data": {
+          "content": "23.154",
+          "iteration": 1
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "step_token",
+        "stage": "step_token",
+        "message": "",
+        "data": {
+          "content": "` 和 `172",
+          "iteration": 1
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "step_token",
+        "stage": "step_token",
+        "message": "",
+        "data": {
+          "content": ".66.14",
+          "iteration": 1
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "step_token",
+        "stage": "step_token",
+        "message": "",
+        "data": {
+          "content": "7.243`",
+          "iteration": 1
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "step_token",
+        "stage": "step_token",
+        "message": "",
+        "data": {
+          "content": "\n- 解析耗时",
+          "iteration": 1
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "step_token",
+        "stage": "step_token",
+        "message": "",
+        "data": {
+          "content": " 1 毫秒",
+          "iteration": 1
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "step_token",
+        "stage": "step_token",
+        "message": "",
+        "data": {
+          "content": "\n\n这表明域名解析",
+          "iteration": 1
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "step_token",
+        "stage": "step_token",
+        "message": "",
+        "data": {
+          "content": "正常，没有问题。接下来",
+          "iteration": 1
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "step_token",
+        "stage": "step_token",
+        "message": "",
+        "data": {
+          "content": "需要汇总诊断结论并",
+          "iteration": 1
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "step_token",
+        "stage": "step_token",
+        "message": "",
+        "data": {
+          "content": "输出根因及",
+          "iteration": 1
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "step_token",
+        "stage": "step_token",
+        "message": "",
+        "data": {
+          "content": "处置建议。",
+          "iteration": 1
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "usage",
+        "stage": "usage",
+        "message": "",
+        "data": {
+          "round": 2,
+          "input_tokens": 3155,
+          "output_tokens": 91,
+          "total_tokens": 3246,
+          "model": "qwen-max",
+          "iteration": 1
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "transition",
+        "stage": "executor_ok",
+        "message": "iter=1/2",
+        "data": {
+          "node": "executor",
+          "ts": "2026-10-17T16:49:01.010+08:00",
+          "reason": "executor_ok"
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "step_complete",
+        "stage": "step_executed",
+        "message": "完成第 1 步",
+        "data": {
+          "iteration": 1,
+          "step": "调用 dns_lookup('www.example.com') 检查域名解析是否正常。",
+          "result_preview": "DNS 解析结果如下：\n- 域名 `www.example.com` 对应的 IP 地址为 `104.20.23.154` 和 `172.66.147.243`\n- 解析耗时 1 毫秒\n\n这表明域名解析正常，没有问题。接下来需要汇总诊断结论并输出根因及处置建议。"
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "transition",
+        "stage": "replanner_finished_ok",
+        "message": "report_len=582",
+        "data": {
+          "node": "replanner",
+          "ts": "2026-10-17T16:49:12.069+08:00",
+          "reason": "replanner_finished_ok"
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "report",
+        "stage": "report_generated",
+        "message": "最终诊断报告已生成",
+        "data": {
+          "report": "# 故障诊断报告\n**生成时间**: 2026-10-17 16:49:01 中国标准时间 \\\\[换行] **生成时间**: 2026-10-17 16:49:01 中国标准时间 \\\\[换行] ## 一、问题概述 \\\\[换行] - 现象: 检查域名 `www.example.com` 的解析是否正常。 \\\\[换行] - 影响范围: 本次检查未发现影响范围，仅针对单一域名的DNS解析情况。 \\\\[换行] - 持续时长: 不适用 \\\\[换行] ## 二、根因分析 \\\\[换行] 基于已收集的证据, 推断的根本原因是 `www.example.com` 的DNS解析功能正常。 \\\\[换行] ## 三、关键证据 \\\\[换行] 1. 域名 `www.example.com` 成功解析到 IP 地址 `104.20.23.154` 和 `172.66.147.243`。 \\\\[换行] 2. 解析耗时仅为 1 毫秒，表明解析过程迅速且无延迟。 \\\\[换行] ## 四、处置建议 \\\\[换行] ### 紧急止损 \\\\[换行] - 无需采取紧急措施，因为DNS解析没有异常。 \\\\[换行] ### 长期优化 \\\\[换行] - 定期监测DNS解析性能以确保长期稳定。 \\\\[换行] ## 五、结论 \\\\[换行] DNS解析对于 `www.example.com` 是正常的。"
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "progress",
+        "stage": "stats",
+        "message": "输入 6184 · 输出 113 · 合计 6297 tokens · 总耗时 66542ms · 工具 1 次",
+        "data": {
+          "input_tokens": 6184,
+          "output_tokens": 113,
+          "total_tokens": 6297,
+          "llm_ms": 0,
+          "total_ms": 66542,
+          "tool_calls": 1,
+          "tool_ms": 1942,
+          "model": "",
+          "answer_chars": 0,
+          "run_kind": "aiops_diagnosis"
+        }
+      }
+    },
+    {
+      "event": "message",
+      "data": {
+        "type": "complete",
+        "stage": "diagnosis_complete",
+        "message": "诊断流程完成",
+        "data": {}
+      }
+    }
+  ]
+}

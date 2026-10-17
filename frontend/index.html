@@ -6,7 +6,7 @@
 <title>Multi-Agent AIOps</title>
 <link rel="stylesheet" href="/styles/tokens.css">
 <link rel="stylesheet" href="/styles/base.css">
-<link rel="stylesheet" href="/styles/components.css">
+<link rel="stylesheet" href="/styles/components.css?v=20261017-fixes2">
 </head>
 <body>
 
@@ -106,8 +106,6 @@
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button id="offline-demo-toggle" class="ink-btn ink-btn-sm">Toggle Offline Banner</button>
           <button id="aiops-download-fixture" class="ink-btn ink-btn-sm" disabled>Download fixture JSON</button>
-          <button id="aiops-export-markdown" class="ink-btn ink-btn-sm" disabled>Export Markdown</button>
-          <span id="aiops-report-actions" class="hidden"></span>
         </div>
         <div id="offline-demo-banner" class="hidden" style="margin-top:6px;padding:6px 10px;background:var(--ink-warn-soft);border:1px solid rgba(184,134,11,0.3);border-radius:6px;font-size:11px;color:#7C5C0A"></div>
       </div>
@@ -179,13 +177,15 @@
           </div>
         </div>
         <!-- 报告视图 (初始隐藏) -->
-        <div id="aiops-report" class="hidden" style="flex:1 1 auto;min-height:0;display:flex;flex-direction:column">
-          <div class="ink-section-title" style="flex:0 0 auto"><span id="aiops-report-title">诊断报告</span></div>
-          <div id="aiops-report-body" class="aiops-report-body" style="padding:0 2px"></div>
-          <div id="aiops-report-actions-bar" class="aiops-report-actions-bar hidden">
-            <button id="aiops-export-markdown-report" class="ink-btn ink-btn-sm">Export Markdown</button>
-            <span id="aiops-report-source" style="font-size:11px;color:var(--ink-faint);margin-left:auto"></span>
+        <div id="aiops-report" class="aiops-report hidden">
+          <div class="aiops-report-header">
+            <div>
+              <h3 id="aiops-report-title">诊断报告</h3>
+              <p id="aiops-report-source" class="aiops-report-source"></p>
+            </div>
+            <span id="aiops-report-status" class="ink-pill ink-pill-ok">已生成</span>
           </div>
+          <div id="aiops-report-body" class="aiops-report-body prose" role="region" aria-label="诊断报告正文" tabindex="0"></div>
         </div>
       </div>
     </div>
@@ -335,7 +335,7 @@
     <div class="ink-panel">
       <div class="ink-panel-head">
         <h3>Prometheus 指标</h3>
-        <span style="font-size:11px;color:var(--ink-faint)">每 15s 自动刷新</span>
+        <span style="font-size:11px;color:var(--ink-faint)">本次服务启动以来 · 每 15s 刷新</span>
       </div>
       <div class="ink-panel-body">
         <div class="metrics-cards" id="metrics-cards">
@@ -370,6 +370,6 @@
   <div class="ink-footer">Multi-Agent AIOps · 水墨风</div>
 </footer>
 
-<script type="module" src="/js/main.js"></script>
+<script type="module" src="/js/main.js?v=20261017-fixes3"></script>
 </body>
 </html>

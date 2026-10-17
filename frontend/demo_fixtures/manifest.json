@@ -1,3 +1,13 @@
 {
-  "fixtures": []
+  "fixtures": [
+    {
+      "id": "deployment_dns",
+      "title": "Public DNS diagnosis - real local recording",
+      "path": "deployment_dns.json",
+      "recorded_at": "2026-10-17T08:48:05.531238",
+      "event_count": 34,
+      "duration_ms": 66544,
+      "source": "real_sse"
+    }
+  ]
 }

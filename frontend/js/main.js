@@ -2,12 +2,12 @@
 import { initHealth } from "./modules/health.js";
 
 const MODULES = {
-    aiops:     () => import("./modules/aiops.js"),
+    aiops:     () => import("./modules/aiops.js?v=20261017-fixes3"),
     chat:      () => import("./modules/chat.js"),
     documents: () => import("./modules/documents.js"),
-    agentops:  () => import("./modules/agentops.js"),
-    metrics:   () => import("./modules/metrics.js"),
-    webhook:   () => import("./modules/webhook.js"),
+    agentops:  () => import("./modules/agentops.js?v=20261017-fixes3"),
+    metrics:   () => import("./modules/metrics.js?v=20261017-fixes2"),
+    webhook:   () => import("./modules/webhook.js?v=20261017-fixes2"),
 };
 
 // 每个 module 各自的 init 函数名 (约定 init + PascalCase)

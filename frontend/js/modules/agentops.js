@@ -1,6 +1,7 @@
 // AgentOps 控制台 (6 子页) — 从原 app.js:1015-1648 搬迁,加子路由 + 汉化
 import { API, agentOpsRequest } from "../core/api.js";
-import { escapeHtml, renderMarkdown } from "../core/markdown.js";
+import { escapeHtml } from "../core/markdown.js";
+import { renderReportMarkdown } from "../core/report.js?v=20261017-fixes3";
 import { t } from "../core/i18n.js";
 
 let inited = false;
@@ -238,7 +239,7 @@ function handleAgentOpsRunClick(e) {
             <div style="margin-bottom:10px;font-size:12px;color:var(--ink-muted)">
                 Persisted report for <span style="font-family:var(--font-mono)">${escapeHtml(run.id)}</span>
             </div>
-            ${renderMarkdown(run.report_markdown || "")}
+            ${renderReportMarkdown(run.report_markdown || "")}
         `;
         report.classList.remove("hidden");
         report.scrollIntoView({ behavior: "smooth", block: "nearest" });

@@ -28,6 +28,7 @@ from app.agents import build_aiops_graph
 from app.agents.stream_sink import set_sink
 from app.runtime.agent_harness import HarnessUsageStats, get_agent_harness
 import app.services.chat_memory as chat_memory
+from app.utils.report import normalize_report_markdown
 
 # 模块级单例 (图编译有开销, 不要每次请求都建)
 _graph = None
@@ -45,6 +46,8 @@ def _make_event(
     event_type: str, stage: str, message: str = "", **data: Any
 ) -> Dict[str, Any]:
     """构造统一格式的 SSE 事件."""
+    if event_type == "report" and isinstance(data.get("report"), str):
+        data["report"] = normalize_report_markdown(data["report"])
     return {"type": event_type, "stage": stage, "message": message, "data": data}
 
 

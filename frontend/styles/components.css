@@ -221,28 +221,6 @@
     background: var(--ink-accent-soft);
 }
 
-/* Export markdown 按钮 */
-.export-md-btn {
-    padding: 6px 12px;
-    border: 1px solid var(--ink-border-strong);
-    border-radius: var(--radius-btn);
-    background: var(--ink-surface);
-    color: var(--ink-text);
-    font-size: 12px;
-    font-weight: 600;
-    line-height: 1.2;
-    transition: background 0.15s, border-color 0.15s;
-}
-.export-md-btn:hover:not(:disabled) {
-    border-color: var(--ink-accent);
-    background: var(--ink-accent-soft);
-    color: var(--ink-accent-strong);
-}
-.export-md-btn:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-}
-
 /* ---------- Inputs ---------- */
 .ink-input,
 .ink-textarea,
@@ -694,6 +672,7 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
+    min-width: 0;
 }
 .aiops-monitor {
     flex: 1 1 auto;
@@ -704,23 +683,103 @@
     padding: 14px 16px;
     overflow: hidden;
 }
-/* 报告视图需要独立滚动, 覆盖 .aiops-monitor 的 overflow:hidden */
-#aiops-report {
-    overflow-y: auto;
-    padding: 14px 16px;
+/* 报告卡片与左侧计划面板保持一致，正文独立滚动。 */
+.aiops-report {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--ink-surface);
+    border: 1px solid var(--ink-border);
+    border-radius: var(--radius-card);
+    box-shadow: var(--ink-shadow);
+}
+.aiops-report-header {
+    flex: 0 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 22px;
+    background: var(--ink-surface-2);
+    border-bottom: 1px solid var(--ink-border);
+}
+.aiops-report-header h3 {
+    font-size: 16px;
+    line-height: 1.4;
+}
+.aiops-report-source {
+    margin: 5px 0 0;
+    color: var(--ink-muted);
+    font-size: 11.5px;
+    line-height: 1.6;
+}
+.aiops-report-header .ink-pill {
+    flex-shrink: 0;
+    white-space: nowrap;
 }
 .aiops-report-body {
     flex: 1 1 auto;
     min-height: 0;
+    overflow: auto;
+    padding: 24px 28px 32px;
+    scrollbar-gutter: stable;
+    overflow-wrap: anywhere;
+    line-height: 1.85;
 }
-.aiops-report-actions-bar {
-    flex: 0 0 auto;
-    border-top: 1px solid var(--ink-border);
-    padding-top: 10px;
-    margin-top: 10px;
-    display: flex;
-    gap: 8px;
-    align-items: center;
+.aiops-report-body:focus-visible {
+    outline: 2px solid var(--ink-accent);
+    outline-offset: -3px;
+}
+.aiops-report-body h1 {
+    margin: 0 0 20px;
+    font-size: 22px;
+    line-height: 1.5;
+}
+.aiops-report-body h2 {
+    margin: 26px 0 12px;
+    padding-left: 12px;
+    border-left: 3px solid var(--ink-accent);
+    font-size: 17px;
+    line-height: 1.6;
+}
+.aiops-report-body h3 {
+    margin: 18px 0 8px;
+    font-size: 14px;
+    line-height: 1.7;
+}
+.aiops-report-body p { margin: 10px 0; }
+.aiops-report-body p:empty { display: none; }
+.aiops-report-body p:has(> br:only-child),
+.aiops-report-body :is(h1, h2, h3, ul, ol, pre) + br { display: none; }
+.aiops-report-body ul,
+.aiops-report-body ol { margin: 10px 0; padding-left: 22px; }
+.aiops-report-body li { margin: 8px 0; padding-left: 2px; }
+.aiops-report-body code { white-space: break-spaces; }
+.aiops-report-body pre { margin: 16px 0; line-height: 1.7; }
+.aiops-report-body pre code { white-space: pre; }
+.aiops-report-body table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 13px;
+}
+.aiops-report-body th,
+.aiops-report-body td { border: 1px solid var(--ink-border); padding: 9px 12px; text-align: left; }
+.aiops-report-body th { background: var(--ink-bg-soft); font-weight: 600; }
+.aiops-report-body blockquote {
+    margin: 16px 0;
+    padding: 2px 16px;
+    border-left: 3px solid var(--ink-border-strong);
+    color: var(--ink-muted);
+}
+.aiops-report-error {
+    padding: 14px 16px;
+    border-left: 3px solid var(--ink-error);
+    border-radius: var(--radius-btn);
+    color: var(--ink-error);
+    background: var(--ink-error-soft);
 }
 .aiops-monitor-grid {
     display: grid;
@@ -771,6 +830,8 @@
     .aiops-left .ink-panel.aiops-plan-panel { flex: 0 0 auto; max-height: 260px; }
     .aiops-left .ink-panel.aiops-steps-panel { min-height: 320px; }
     .aiops-monitor-grid { grid-template-columns: 1fr; }
+    .aiops-grid.has-report .aiops-right { grid-row: 1; }
+    .aiops-report-body { max-height: 75vh; }
 }
 @media (max-width: 768px) {
     .ink-shell { padding: 12px 14px 18px; }
@@ -778,6 +839,9 @@
     .ink-form-grid { grid-template-columns: 1fr; }
     .ink-list-item { flex-direction: column; }
     .ink-list-actions { justify-content: flex-start; }
+    .aiops-report-header { padding: 16px 18px; gap: 10px; }
+    .aiops-report-body { padding: 20px 18px 26px; }
+    .aiops-report-body h1 { font-size: 20px; }
 }
 
 /* ---------- RAG thinking / progress ---------- */

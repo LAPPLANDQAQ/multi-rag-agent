@@ -5,12 +5,12 @@ const METRICS_INTERVAL_MS = 15000;
 let metricsTimer = null;
 let history = []; // 最近 30 次轮询的数据点
 
-// 需要展示的 Prometheus metric 名
+// 对齐后端实际采集的指标；所有累计值均从本次服务启动开始计算。
 const KEY_METRICS = [
-    { name: "aiops_diagnoses_total",        label: "总诊断数",       format: "int" },
-    { name: "aiops_success_total",          label: "成功诊断数",     format: "int" },
-    { name: "aiops_duration_seconds",       label: "诊断耗时(P95)",  format: "seconds", quantile: "0.95" },
-    { name: "aiops_tokens_total",           label: "累计 Tokens",    format: "int" },
+    { name: "diagnoses",                label: "总诊断数",       format: "int" },
+    { name: "successes",                label: "成功诊断数",     format: "int" },
+    { name: "average_duration_seconds", label: "平均诊断耗时",   format: "seconds" },
+    { name: "tool_calls",               label: "工具调用数",     format: "int" },
 ];
 
 async function fetchAndRender() {
@@ -22,33 +22,36 @@ async function fetchAndRender() {
         const resp = await fetch("/metrics");
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const text = await resp.text();
-        const parsed = parsePrometheusText(text);
-        renderCards(gridEl, parsed);
-        recordHistory(parsed);
+        const values = summarizeDiagnosisMetrics(parsePrometheusText(text));
+        renderCards(gridEl, values);
+        recordHistory(values);
         renderMiniCharts(chartEl);
     } catch (e) {
         gridEl.innerHTML = `<div class="ink-warning" style="grid-column:1/-1">指标不可用: ${escapeHtml(e.message)}</div>`;
     }
 }
 
-function parsePrometheusText(text) {
-    // 简易 Prometheus text 解析器
-    const result = {};
+export function parsePrometheusText(text) {
+    const result = Object.create(null);
     const lines = text.split("\n");
-    for (const line of lines) {
+    for (const rawLine of lines) {
+        const line = rawLine.trim();
+        // 有标签的 Counter 在首次调用前只有 TYPE 声明，此时真实计数为 0。
+        const type = line.match(/^# TYPE ([a-zA-Z_:][a-zA-Z0-9_:]*)\s+(counter|gauge|histogram|summary)\s*$/);
+        if (type) {
+            if (!result[type[1]]) result[type[1]] = [];
+            continue;
+        }
         if (!line || line.startsWith("#")) continue;
-        const m = line.match(/^(\w+)\{([^}]*)\}\s+([\d.eE+-]+)(?:\s+\d+)?$/);
+        const m = line.match(/^([a-zA-Z_:][a-zA-Z0-9_:]*)(?:\{(.*)\})?\s+(\S+)(?:\s+\d+)?$/);
         if (m) {
             const name = m[1];
-            const labelsStr = m[2];
-            const value = parseFloat(m[3]);
+            const labelsStr = m[2] || "";
+            const value = Number(m[3]);
             const labels = {};
-            labelsStr.split(",").forEach(pair => {
-                const eq = pair.indexOf("=");
-                if (eq > 0) {
-                    labels[pair.slice(0, eq).trim()] = pair.slice(eq + 1).replace(/^"|"$/g, "");
-                }
-            });
+            for (const label of labelsStr.matchAll(/([a-zA-Z_][a-zA-Z0-9_]*)="((?:\\.|[^"\\])*)"/g)) {
+                labels[label[1]] = label[2].replace(/\\(n|"|\\)/g, (_, ch) => ch === "n" ? "\n" : ch);
+            }
             if (!result[name]) result[name] = [];
             result[name].push({ labels, value });
         }
@@ -56,20 +59,29 @@ function parsePrometheusText(text) {
     return result;
 }
 
-function getMetricValue(parsed, name, quantile) {
-    const entries = parsed[name] || [];
-    if (quantile) {
-        const match = entries.find(e => e.labels.quantile === quantile);
-        return match ? match.value : null;
-    }
-    // 取第一个 (通常 counter/gauge 只有一条)
-    return entries.length ? entries[0].value : null;
+function sumMetric(parsed, name, matches = () => true) {
+    const entries = parsed[name];
+    if (!entries) return null;
+    const selected = entries.filter(matches);
+    if (selected.some(entry => !Number.isFinite(entry.value))) return null;
+    return selected.reduce((total, entry) => total + entry.value, 0);
 }
 
-function renderCards(gridEl, parsed) {
+export function summarizeDiagnosisMetrics(parsed) {
+    const durationCount = sumMetric(parsed, "aiops_run_duration_seconds_count");
+    const durationSum = sumMetric(parsed, "aiops_run_duration_seconds_sum");
+    return {
+        diagnoses: sumMetric(parsed, "aiops_runs_total"),
+        successes: sumMetric(parsed, "aiops_runs_total", entry => entry.labels.status === "success"),
+        average_duration_seconds: durationCount > 0 && durationSum != null ? durationSum / durationCount : null,
+        tool_calls: sumMetric(parsed, "aiops_tool_calls_total"),
+    };
+}
+
+function renderCards(gridEl, values) {
     gridEl.innerHTML = "";
     KEY_METRICS.forEach(m => {
-        const val = getMetricValue(parsed, m.name, m.quantile);
+        const val = values[m.name];
         const display = formatMetricValue(val, m.format);
         const card = document.createElement("div");
         card.className = "ink-metric";
@@ -88,17 +100,21 @@ function formatMetricValue(value, format) {
     return String(value);
 }
 
-function recordHistory(parsed) {
+function recordHistory(values) {
     const point = { ts: Date.now() };
     KEY_METRICS.forEach(m => {
-        point[m.name] = getMetricValue(parsed, m.name, m.quantile) ?? null;
+        point[m.name] = values[m.name] ?? null;
     });
     history.push(point);
     if (history.length > 30) history.shift();
 }
 
 function renderMiniCharts(chartEl) {
-    if (!chartEl || history.length < 2) return;
+    if (!chartEl) return;
+    if (history.length < 2) {
+        chartEl.innerHTML = '<div class="ink-empty">趋势会在下一次采样后显示（约 15 秒）。</div>';
+        return;
+    }
 
     const names = KEY_METRICS.map(m => m.name).filter(n => history.some(p => p[n] != null));
     if (!names.length) return;

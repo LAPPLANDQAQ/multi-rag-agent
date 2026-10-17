@@ -36,6 +36,18 @@ export async function searchBaidu(query: string, limit: number): Promise<SearchR
         }));
 
         const $ = cheerio.load(response.data);
+        const pageTitle = $('title').text().replace(/\s+/g, ' ').trim();
+        const finalUrl = response.request?.res?.responseUrl || response.request?.responseURL || '';
+        let verificationRedirect = false;
+        try {
+            const hostname = new URL(finalUrl).hostname;
+            verificationRedirect = hostname === 'wappass.baidu.com' || hostname.endsWith('.wappass.baidu.com');
+        } catch {
+            // Some transports omit the final URL; the page title still identifies the challenge.
+        }
+        if (verificationRedirect || /^(?:百度安全验证|百度验证|Baidu(?: Security)? Verification)$/i.test(pageTitle)) {
+            throw new Error('Baidu verification required (captcha page); search results are unavailable.');
+        }
         const results: SearchResult[] = [];
 
         $('#content_left').children().each((i, element) => {

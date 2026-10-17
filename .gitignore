@@ -43,9 +43,11 @@ generated_reports/
 frontend/demo_fixtures/*.json
 !frontend/demo_fixtures/README.md
 !frontend/demo_fixtures/manifest.json
+!frontend/demo_fixtures/deployment_dns.json
 
 # Node / open-webSearch
 node_modules/
+.npm-cache/
 open-webSearch-main/node_modules/
 open-webSearch-main/build/
 open-webSearch-main/dist/

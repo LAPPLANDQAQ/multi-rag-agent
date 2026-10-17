@@ -11,6 +11,9 @@ import os
 from typing import Any, Dict, List
 
 
+_OPEN_WEBSEARCH_DEFAULT_TIMEOUT_SEC = 90.0
+
+
 def get_provider() -> str:
     """从 settings (优先) 或环境变量解析 provider 名."""
     try:
@@ -31,14 +34,14 @@ def get_open_websearch_config() -> dict[str, Any]:
             "base_url": (settings.open_websearch_base_url or "").strip(),
             "engine": (settings.open_websearch_engine or "").strip(),
             "search_mode": (settings.open_websearch_search_mode or "").strip(),
-            "timeout": float(settings.open_websearch_timeout_sec or 15.0),
+            "timeout": float(settings.open_websearch_timeout_sec or _OPEN_WEBSEARCH_DEFAULT_TIMEOUT_SEC),
         }
     except Exception:
         return {
             "base_url": (os.environ.get("OPEN_WEBSEARCH_BASE_URL") or "http://127.0.0.1:3210").strip(),
             "engine": (os.environ.get("OPEN_WEBSEARCH_ENGINE") or "bing").strip(),
             "search_mode": (os.environ.get("OPEN_WEBSEARCH_SEARCH_MODE") or "auto").strip(),
-            "timeout": float(os.environ.get("OPEN_WEBSEARCH_TIMEOUT_SEC") or 15.0),
+            "timeout": float(os.environ.get("OPEN_WEBSEARCH_TIMEOUT_SEC") or _OPEN_WEBSEARCH_DEFAULT_TIMEOUT_SEC),
         }
 
 
@@ -65,7 +68,7 @@ def search_open_websearch(query: str, max_results: int) -> List[Dict[str, Any]]:
     resp = httpx.post(
         f"{base_url}/search",
         json=payload,
-        timeout=float(cfg.get("timeout") or 15.0),
+        timeout=float(cfg.get("timeout") or _OPEN_WEBSEARCH_DEFAULT_TIMEOUT_SEC),
     )
     resp.raise_for_status()
     envelope = resp.json()
@@ -75,7 +78,7 @@ def search_open_websearch(query: str, max_results: int) -> List[Dict[str, Any]]:
         raise RuntimeError(message or "open-webSearch 返回 error")
 
     data = envelope.get("data") or {}
-    return [
+    results = [
         {
             "title": r.get("title", "(无标题)"),
             "url": r.get("url", ""),
@@ -86,6 +89,20 @@ def search_open_websearch(query: str, max_results: int) -> List[Dict[str, Any]]:
         for r in data.get("results", [])
         if isinstance(r, dict)
     ]
+    # The daemon reports per-engine failures inside an otherwise successful
+    # envelope. Keep partial success, but do not disguise total failure as no hits.
+    failures = data.get("partialFailures") or []
+    if not results and failures:
+        failure = failures[0]
+        if isinstance(failure, dict):
+            engine = " ".join(str(failure.get("engine") or "unknown").split())[:40]
+            message = failure.get("message") or failure.get("code") or "engine_error"
+        else:
+            engine, message = "unknown", str(failure)
+        detail = " ".join(str(message).split())[:240] or "engine_error"
+        suffix = f" (另 {len(failures) - 1} 个引擎失败)" if len(failures) > 1 else ""
+        raise RuntimeError(f"open-webSearch 引擎失败 [{engine}]: {detail}{suffix}")
+    return results
 
 
 def search_ddgs(query: str, max_results: int) -> List[Dict[str, Any]]:

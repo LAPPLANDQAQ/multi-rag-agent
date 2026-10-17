@@ -8,7 +8,6 @@
       3. 兜底: 如果 LLM 返回空 plan, 也强制生成报告
 """
 
-import re
 from datetime import datetime
 
 from loguru import logger
@@ -29,6 +28,7 @@ from app.runtime.transitions import (
     make_transition,
 )
 from app.skills import get_skill_registry
+from app.utils.report import ensure_report_time
 
 
 def _format_past_steps(past_steps: list[tuple[str, str]]) -> str:
@@ -108,12 +108,7 @@ def _current_report_time() -> str:
 
 
 def _ensure_report_time(report: str, current_time: str) -> str:
-    line = f"**生成时间**: {current_time}"
-    if re.search(r"^\*\*生成时间\*\*:.*$", report, flags=re.MULTILINE):
-        return re.sub(r"^\*\*生成时间\*\*:.*$", line, report, count=1, flags=re.MULTILINE)
-    if report.startswith("# 故障诊断报告"):
-        return report.replace("# 故障诊断报告", f"# 故障诊断报告\n{line}", 1)
-    return f"# 故障诊断报告\n{line}\n\n{report}"
+    return ensure_report_time(report, current_time)
 
 
 def _build_skill_context(
@@ -411,17 +406,21 @@ def _force_summary(
     current_time: str,
 ) -> str:
     """硬兜底: 当 LLM 决策失败或超步数, 用模板生成简单报告."""
-    if not past_steps:
-        return f"# 故障诊断报告\n**生成时间**: {current_time}\n\n## 问题\n{user_input}\n\n## 结论\n诊断流程异常终止, 未能收集到有效信息, 请人工介入。"
-
     sections = [
         "# 故障诊断报告\n",
         f"**生成时间**: {current_time}\n",
-        f"## 问题\n{user_input}\n",
-        "## 收集到的信息\n",
+        f"## 一、问题概述\n{user_input}\n",
+        "## 二、根因分析\n现有证据不足以确认根因，需要人工复核。\n",
+        "## 三、关键证据\n",
     ]
+    if not past_steps:
+        sections.append("未能收集到有效信息。\n")
     for i, (step, result) in enumerate(past_steps, 1):
         snippet = result[:300].replace("\n", " ")
         sections.append(f"**{i}. {step}**\n{snippet}\n")
-    sections.append("## 结论\n基于以上信息, 建议进一步人工确认根因和处置方案。")
+    sections.extend([
+        "## 四、处置建议\n### 紧急止损\n先核实影响范围与关键证据，再决定处置；不要直接执行未经确认的变更。\n",
+        "### 长期优化\n补充可观测信息，并重新执行诊断。\n",
+        "## 五、结论\n本次诊断未能完整收敛，建议进一步人工确认根因和处置方案。",
+    ])
     return "\n".join(sections)

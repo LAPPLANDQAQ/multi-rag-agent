@@ -298,8 +298,8 @@ class Settings(BaseSettings):
         description="open-webSearch 搜索模式: request / auto / playwright",
     )
     open_websearch_timeout_sec: float = Field(
-        default=15.0,
-        description="open-webSearch HTTP 调用超时秒数",
+        default=90.0,
+        description="open-webSearch HTTP 调用超时秒数，包含 auto 模式的浏览器回退等待",
     )
 
     # ==================== Docker 管理 ====================

@@ -67,7 +67,8 @@ async def ainvoke_structured(
         "role": "system",
         "content": (
             "你必须只输出一个合法的 json 对象 (严格 json 格式, 小写 json), "
-            "不要 markdown, 不要代码块, 不要解释。\n"
+            "对象外不要 markdown 围栏或解释；字符串字段保留 schema 要求的 Markdown 格式。\n"
+            "字符串换行只进行一次标准 json 转义，解析后应为真实换行，不要用 [n] 或 [换行] 占位。\n"
             "json 字段要求:\n"
             f"{_schema_hint(schema_cls)}"
         ),

@@ -11,11 +11,12 @@ async function loadHistory() {
     listEl.innerHTML = '<div class="ink-empty">加载中...</div>';
     try {
         const resp = await fetch(`${API}/webhook/history?limit=30`);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
         const items = Array.isArray(data?.items) ? data.items : [];
 
         if (items.length === 0) {
-            listEl.innerHTML = '<div class="ink-empty">暂无告警事件</div>';
+            listEl.innerHTML = '<div class="ink-empty">暂无 Alertmanager 自动诊断记录。<br>接入 Alertmanager 并完成告警诊断后会显示在这里；手动诊断请在 AgentOps 的运行记录中查看。</div>';
             return;
         }
 
@@ -82,7 +83,8 @@ async function loadHistory() {
 async function clearHistory() {
     if (!confirm("确定清空所有告警历史?")) return;
     try {
-        await fetch(`${API}/webhook/history`, { method: "DELETE" });
+        const resp = await fetch(`${API}/webhook/history`, { method: "DELETE" });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         loadHistory();
     } catch (e) {
         alert(`清空失败: ${e.message}`);

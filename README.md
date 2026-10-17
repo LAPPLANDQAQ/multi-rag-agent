@@ -305,6 +305,12 @@ X-KB-Admin-Token: your-admin-token
 | `HARNESS_MAX_TOTAL_TOKENS` | `0` | 单次运行 token 硬上限，0 表示不限制 |
 | `HARNESS_MAX_TOTAL_MS` | `0` | 单次运行耗时硬上限，0 表示不限制 |
 
+RAG 联网需要同时启用服务端 `RAG_CHAT_WEB_SEARCH_ENABLED=true` 和页面的「联网」开关，与「MCP」开关独立。`.env.example` 已显式开启服务端许可，页面仍默认关闭联网；如需全局禁用，可在 `.env` 中设置为 `false`。修改配置后需重启服务。
+
+本地示例配置使用 `OPEN_WEBSEARCH_ENGINE=duckduckgo`、`OPEN_WEBSEARCH_SEARCH_MODE=request`，通过已有 Node 搜索服务获取结果，无需额外安装 Python `ddgs`。如使用 Bing，可将引擎改为 `bing`、模式改为 `auto`，以支持 HTTP 失败后的 Playwright 回退。
+
+`OPEN_WEBSEARCH_TIMEOUT_SEC` 默认 90 秒。`auto` 模式可能先等待普通 HTTP 请求，再使用 Playwright 搜索，耗时可能超过 20 秒；过短的超时会在浏览器回退完成前中断。此值是应用等待搜索响应的超时，不是搜索引擎内部各步骤的严格总时限。
+
 ## 性能与评估数据
 
 项目内置基准测试和 RAG 离线评估脚本，覆盖 token 开销、工具执行延迟和 RAG 检索准确率。当前 README 保留原评估口径和量化结果，便于展示优化前后的收益。

@@ -1,7 +1,8 @@
-// AIOps 诊断 + 离线录制/回放 + 报告导出 — 从原 app.js:124-1013 搬迁
+// AIOps 诊断 + 离线录制/回放 + 报告展示
 import { API, OFFLINE_MANIFEST_URL, LOCAL_RECORDING_KEY } from "../core/api.js";
 import { consumeSSE } from "../core/sse.js";
-import { escapeHtml, renderMarkdown } from "../core/markdown.js";
+import { escapeHtml } from "../core/markdown.js";
+import { renderReportMarkdown } from "../core/report.js?v=20261017-fixes3";
 import { highlightSkill, clearSkillHighlight } from "./skills.js";
 
 // ---------- 全局状态 ----------
@@ -13,11 +14,7 @@ let offlineFixtureSources = [];
 let offlineFixtureAvailable = false;
 let selectedDemoScenarioId = "manual";
 const aiopsReportState = {
-    input: "",
-    selectedSkill: "",
     source: "live",
-    generatedAt: "",
-    reportMarkdown: "",
 };
 
 const DEMO_PROMPTS = {
@@ -85,108 +82,25 @@ function setText(id, v) {
     if (el) el.textContent = v;
 }
 
-function resetAiopsReportState({ input = "", source = "live" } = {}) {
-    aiopsReportState.input = input;
-    aiopsReportState.selectedSkill = "";
+function resetAiopsReportState({ source = "live" } = {}) {
     aiopsReportState.source = source;
-    aiopsReportState.generatedAt = "";
-    aiopsReportState.reportMarkdown = "";
-    updateExportMarkdownButton();
 }
 
-function normalizeReportMarkdown(md) {
-    return String(md || "").replace(/\\n/g, "\n").replace(/\\t/g, "\t").trim();
-}
-
-function setAiopsReportMarkdown(md) {
-    aiopsReportState.reportMarkdown = normalizeReportMarkdown(md);
-    aiopsReportState.generatedAt = new Date().toISOString();
-    updateExportMarkdownButton();
-    return aiopsReportState.reportMarkdown;
-}
-
-function updateExportMarkdownButton() {
-    const hasReport = aiopsReportState.reportMarkdown.trim().length > 0;
-    // 离线工具栏中的按钮
-    const btn = document.getElementById("aiops-export-markdown");
-    if (btn) {
-        btn.disabled = !hasReport;
-        btn.title = hasReport
-            ? "Download the displayed diagnosis report as Markdown"
-            : "Generate a diagnosis report before exporting";
-    }
-    // 报告内嵌按钮
-    const inlineBtn = document.getElementById("aiops-export-markdown-report");
-    if (inlineBtn) {
-        inlineBtn.disabled = !hasReport;
-        inlineBtn.title = btn ? btn.title : "";
-    }
-    // 报告操作栏显隐
-    const actionsBar = document.getElementById("aiops-report-actions-bar");
-    if (actionsBar) actionsBar.classList.toggle("hidden", !hasReport);
-    // 旧版占位 (保留兼容)
-    const actions = document.getElementById("aiops-report-actions");
-    if (actions) actions.classList.toggle("hidden", !hasReport);
-}
-
-function buildMarkdownExport() {
-    const exportedAt = new Date().toISOString();
-    const lines = [
-        "# AIOps Diagnosis Report",
-        "",
-        "## Export Metadata",
-        `- Exported at: ${exportedAt}`,
-        `- Report generated at: ${aiopsReportState.generatedAt || "Unavailable"}`,
-        `- Source: ${aiopsReportState.source || "live"}`,
-        `- Selected Skill: ${aiopsReportState.selectedSkill || "Unavailable"}`,
-        "",
-        "## Scenario Input",
-        "",
-        aiopsReportState.input || "Unavailable",
-        "",
-        "## Final Report",
-        "",
-        aiopsReportState.reportMarkdown,
-    ];
-    return `${lines.join("\n").replace(/\n{3,}/g, "\n\n").trim()}\n`;
-}
-
-function markdownExportFilename() {
-    const ts = new Date().toISOString().replace(/[:.]/g, "-");
-    const skill = (aiopsReportState.selectedSkill || "aiops")
-        .toLowerCase()
-        .replace(/[^a-z0-9_-]+/g, "-")
-        .replace(/^-+|-+$/g, "")
-        .slice(0, 40) || "aiops";
-    return `aiops-report-${skill}-${ts}.md`;
-}
-
-function downloadMarkdownReport() {
-    if (!aiopsReportState.reportMarkdown.trim()) return;
-    const blob = new Blob([buildMarkdownExport()], { type: "text/markdown;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = markdownExportFilename();
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 0);
-}
-
-function showAiopsReport() {
+function showAiopsReport({ failed = false } = {}) {
     const mon = document.getElementById("aiops-monitor");
     const rep = document.getElementById("aiops-report");
     if (mon) mon.classList.add("hidden");
     if (rep) rep.classList.remove("hidden");
-    updateExportMarkdownButton();
-    // 显示报告内嵌操作栏
-    const actionsBar = document.getElementById("aiops-report-actions-bar");
-    if (actionsBar) actionsBar.classList.toggle("hidden", !aiopsReportState.reportMarkdown.trim());
+    document.querySelector(".aiops-grid")?.classList.add("has-report");
     setText("aiops-report-source", aiopsReportState.source === "offline-recorded-demo"
-        ? "来源: 离线录制回放" : "来源: 在线实时诊断");
+        ? "离线录制回放 · 已保存的诊断结果" : "在线实时诊断 · 基于本次收集的证据");
     setText("aiops-right-title", "诊断报告");
-    setText("aiops-report-title", "诊断报告");
+    setText("aiops-report-title", failed ? "诊断提示" : "诊断报告");
+    const status = document.getElementById("aiops-report-status");
+    if (status) {
+        status.textContent = failed ? "未完成" : "已生成";
+        status.className = `ink-pill ${failed ? "ink-pill-fail" : "ink-pill-ok"}`;
+    }
 }
 
 function showAiopsMonitor() {
@@ -194,8 +108,7 @@ function showAiopsMonitor() {
     const rep = document.getElementById("aiops-report");
     if (mon) mon.classList.remove("hidden");
     if (rep) rep.classList.add("hidden");
-    const actionsBar = document.getElementById("aiops-report-actions-bar");
-    if (actionsBar) actionsBar.classList.add("hidden");
+    document.querySelector(".aiops-grid")?.classList.remove("has-report");
     setText("aiops-right-title", "诊断监控");
 }
 
@@ -212,7 +125,7 @@ function resetAiopsUi(statusText) {
     const els = getAiopsElements();
     if (els.planEl) els.planEl.innerHTML = '<span class="ink-muted italic">等待 Planner...</span>';
     if (els.stepsEl) els.stepsEl.innerHTML = "";
-    // 只清报告正文,不破坏 #aiops-report-body / #aiops-report-actions-bar 结构
+    // 只清报告正文,保留卡片标题和来源信息。
     const reportBody = document.getElementById("aiops-report-body");
     if (reportBody) reportBody.innerHTML = "";
     showAiopsMonitor();
@@ -228,7 +141,7 @@ async function startAiops() {
     if (!query) return alert("请输入告警内容");
 
     const { planEl, stepsEl, reportEl, statusEl } = resetAiopsUi("Skill Router 工作中...");
-    resetAiopsReportState({ input: query, source: "live" });
+    resetAiopsReportState({ source: "live" });
     const shouldRecord = document.getElementById("aiops-record-stream")?.checked === true;
     if (shouldRecord) {
         beginSseRecording({
@@ -265,9 +178,9 @@ async function startAiops() {
             if (statusEl) statusEl.textContent = "已停止";
         } else {
             if (statusEl) statusEl.textContent = "失败 ✗";
-            showAiopsReport();
+            showAiopsReport({ failed: true });
             const body = document.getElementById("aiops-report-body");
-            if (body) body.innerHTML = `<p style="color:var(--ink-error)">错误: ${e.message}</p>`;
+            if (body) body.innerHTML = `<p class="aiops-report-error">错误: ${escapeHtml(e.message)}</p>`;
         }
     } finally {
         if (activeSseRecording) {
@@ -633,9 +546,8 @@ async function startOfflineReplay() {
     const banner = document.getElementById("offline-demo-banner");
     if (banner) banner.classList.remove("hidden");
 
-    const replayInput = metadata.input || document.getElementById("aiops-query")?.value.trim() || "Offline recorded demo";
     const { planEl, stepsEl, reportEl, statusEl } = resetAiopsUi("Offline recorded playback starting...");
-    resetAiopsReportState({ input: replayInput, source: "offline-recorded-demo" });
+    resetAiopsReportState({ source: "offline-recorded-demo" });
     offlineReplayController = { stopped: false };
     document.getElementById("aiops-start").disabled = true;
     document.getElementById("aiops-stop").disabled = false;
@@ -657,9 +569,9 @@ async function startOfflineReplay() {
         setText("offline-replay-status", offlineReplayController.stopped ? "Playback stopped" : "Playback complete");
     } catch (e) {
         if (statusEl) statusEl.textContent = "Offline playback failed";
-        showAiopsReport();
+        showAiopsReport({ failed: true });
         const body = document.getElementById("aiops-report-body");
-        if (body) body.innerHTML = `<p style="color:var(--ink-error)">Offline playback error: ${escapeHtml(e.message)}</p>`;
+        if (body) body.innerHTML = `<p class="aiops-report-error">回放失败: ${escapeHtml(e.message)}</p>`;
         setText("offline-replay-status", `Playback failed: ${e.message}`);
     } finally {
         document.getElementById("aiops-start").disabled = false;
@@ -682,7 +594,6 @@ function handleAiopsEvent(ev, planEl, stepsEl, reportEl, statusEl) {
         if (statusEl) statusEl.textContent = "Skill Router 工作中...";
     } else if (t === "skill_selected") {
         highlightSkill(d.skill, d.reason);
-        aiopsReportState.selectedSkill = d.skill || "";
         if (statusEl) statusEl.textContent = `已选 Skill: ${d.skill || "(无)"}, Planner 工作中...`;
     } else if (t === "plan") {
         if (planEl) {
@@ -817,18 +728,21 @@ function handleAiopsEvent(ev, planEl, stepsEl, reportEl, statusEl) {
             stepsEl.scrollTop = stepsEl.scrollHeight;
         }
     } else if (t === "report") {
-        const reportMarkdown = setAiopsReportMarkdown(d.report || "");
+        const reportMarkdown = d.report || "";
         showAiopsReport();
         const reportBody = document.getElementById("aiops-report-body");
-        if (reportBody) reportBody.innerHTML = renderMarkdown(reportMarkdown);
+        if (reportBody) {
+            reportBody.innerHTML = renderReportMarkdown(reportMarkdown);
+            reportBody.scrollTop = 0;
+        }
         if (statusEl) statusEl.textContent = "报告已生成";
         setText("mon-stream-hint", "已完成");
     } else if (t === "complete") {
         if (statusEl) statusEl.textContent = "完成 ✓";
     } else if (t === "error") {
-        showAiopsReport();
+        showAiopsReport({ failed: true });
         const reportBody = document.getElementById("aiops-report-body");
-        if (reportBody) reportBody.innerHTML = `<p style="color:var(--ink-error)">错误: ${escapeHtml(ev.message)}</p>`;
+        if (reportBody) reportBody.innerHTML = `<p class="aiops-report-error">错误: ${escapeHtml(ev.message)}</p>`;
         if (statusEl) statusEl.textContent = "失败 ✗";
     }
 }
@@ -871,8 +785,6 @@ export function initAIOps() {
     document.getElementById("offline-replay-start")?.addEventListener("click", startOfflineReplay);
     document.getElementById("offline-fixture-select")?.addEventListener("change", updateOfflineFixtureStatus);
     document.getElementById("aiops-download-fixture")?.addEventListener("click", downloadLatestFixtureJson);
-    document.getElementById("aiops-export-markdown")?.addEventListener("click", downloadMarkdownReport);
-    document.getElementById("aiops-export-markdown-report")?.addEventListener("click", downloadMarkdownReport);
 
     // Offline 折叠区
     const offlineCollapse = document.getElementById("offline-collapse");
