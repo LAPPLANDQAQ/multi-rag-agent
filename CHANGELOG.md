@@ -46,3 +46,7 @@
 ### 文档
 
 - README 补充 Windows 一键本地部署入口（`start-local` / `stop-local`、`compose.local.yml`）、MinIO 本地端口说明、文档索引、项目结构、markdown-it 许可说明，并整理快速开始步骤。
+
+### 依赖安全
+
+- `npm audit fix` 升级 open-webSearch 锁文件中的传递依赖（proxy-addr、undici、ws、hono、qs、axios、ip-address 等），14 项审计漏洞清零，CI Node 审计步骤恢复通过；`npm ci`、构建和 31 项 TypeScript 测试本地验证通过。
